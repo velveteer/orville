@@ -6,10 +6,14 @@ License   : MIT
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE CPP #-}
 module Database.Orville.Internal.Expr.SelectExpr where
 
 import                Data.Maybe
+
+#if ! MIN_VERSION_base(4,11,0)
 import                Data.Monoid
+#endif
 
 import                Database.Orville.Internal.Expr.Expr
 import                Database.Orville.Internal.Expr.NameExpr

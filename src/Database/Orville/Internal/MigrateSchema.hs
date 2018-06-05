@@ -6,10 +6,15 @@ License   : MIT
 
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE CPP #-}
 module Database.Orville.Internal.MigrateSchema
   ( migrateSchema
   , MigrationError(..)
   ) where
+
+#if ! MIN_VERSION_base(4,11,0)
+import                Data.Monoid
+#endif
 
 import            Control.Concurrent (threadDelay)
 import            Control.Monad
@@ -17,7 +22,6 @@ import            Control.Monad.Catch
 import            Control.Monad.IO.Class
 import            Data.Data
 import            Data.Int
-import            Data.Monoid
 import            Data.String
 import            Database.HDBC hiding (withTransaction)
 

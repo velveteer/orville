@@ -6,6 +6,7 @@ License   : MIT
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE CPP #-}
 module Database.Orville.Core
   ( TableDefinition (..)
   , mkTableDefinition
@@ -88,13 +89,16 @@ module Database.Orville.Core
   , MigrationError(..)
   ) where
 
+#if ! MIN_VERSION_base(4,11,0)
+import                Data.Monoid
+#endif
+
 import            Control.Monad.Except
 import            Control.Monad.Reader
 import            Control.Monad.State
 import            Data.Convertible
 import            Data.Maybe (listToMaybe)
 import qualified  Data.Map.Strict as Map
-import            Data.Monoid
 import            Database.HDBC hiding (withTransaction)
 
 import qualified  Data.Map.Helpers as Map

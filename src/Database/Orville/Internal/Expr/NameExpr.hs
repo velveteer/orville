@@ -5,9 +5,13 @@ License   : MIT
 -}
 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP #-}
 module Database.Orville.Internal.Expr.NameExpr where
 
+#if ! MIN_VERSION_base(4,11,0)
 import                Data.Monoid
+#endif
+
 import                Data.String
 
 import                Database.Orville.Internal.Expr.Expr

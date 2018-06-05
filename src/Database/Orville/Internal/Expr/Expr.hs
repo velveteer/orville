@@ -4,9 +4,16 @@ Copyright : Flipstone Technology Partners 2016-2018
 License   : MIT
 -}
 
+{-# LANGUAGE CPP #-}
+
 module Database.Orville.Internal.Expr.Expr where
 
+#if ! MIN_VERSION_base(4,11,0)
+import            Data.Semigroup
+#endif
+
 import            Data.String
+
 
 data RawExpr =
     RawExprString String
@@ -28,6 +35,9 @@ instance Monoid RawExpr where
   mempty = RawExprString ""
   mappend = RawExprAppend
   mconcat = RawExprConcat
+
+instance Semigroup RawExpr where
+  (<>) = mappend
 
 instance IsString RawExpr where
   fromString = rawSql

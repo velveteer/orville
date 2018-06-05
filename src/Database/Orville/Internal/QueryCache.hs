@@ -6,6 +6,7 @@ License   : MIT
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE CPP #-}
 module Database.Orville.Internal.QueryCache
   ( QueryCached
   , runQueryCached
@@ -18,6 +19,10 @@ module Database.Orville.Internal.QueryCache
   )
   where
 
+#if ! MIN_VERSION_base(4,11,0)
+import            Data.Semigroup
+#endif
+
 import            Control.Monad.Catch (MonadThrow)
 import            Control.Monad.Trans
 import            Control.Monad.Trans.State
@@ -25,7 +30,6 @@ import            Data.Convertible
 import qualified  Data.Map as Map
 import qualified  Data.Map.Helpers as Map
 import            Data.Maybe
-import            Data.Monoid
 import            Data.String (fromString)
 import            Database.HDBC hiding (withTransaction)
 

@@ -5,12 +5,17 @@ License   : MIT
 -}
 
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE CPP #-}
 module Database.Orville.Internal.SelectOptions where
+
+#if ! MIN_VERSION_base(4,11,0)
+import            Data.Semigroup (Semigroup(..))
+#endif
 
 import            Data.Convertible
 import qualified  Data.List as List
 import            Data.Maybe
-import            Data.Monoid
+import            Data.Monoid hiding ((<>))
 import            Database.HDBC
 
 import            Database.Orville.Internal.FieldDefinition ()
@@ -42,6 +47,9 @@ instance Monoid SelectOptions where
                   (selectOptLimit opt <> selectOptLimit opt')
                   (selectOptOffset opt <> selectOptOffset opt')
                   (selectOptGroup opt <> selectOptGroup opt')
+
+instance Semigroup SelectOptions where
+  (<>) = mappend
 
 instance QueryKeyable SelectOptions where
   queryKey opt =

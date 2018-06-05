@@ -4,9 +4,13 @@ Copyright : Flipstone Technology Partners 2016-2018
 License   : MIT
 -}
 
+{-# LANGUAGE CPP #-}
 module Database.Orville.Internal.QueryKey where
 
-import            Data.Monoid
+#if ! MIN_VERSION_base(4,11,0)
+import                Data.Semigroup
+#endif
+
 import            Data.Time.LocalTime
 import            Database.HDBC
 
@@ -23,6 +27,9 @@ instance Monoid QueryKey where
   mempty = QKEmpty
   mappend a b = QKList [a, b]
   mconcat = QKList
+
+instance Semigroup QueryKey where
+  (<>) a b = QKList [a, b]
 
 class QueryKeyable a where
   queryKey :: a -> QueryKey
