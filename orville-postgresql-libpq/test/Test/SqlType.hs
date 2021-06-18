@@ -1,40 +1,39 @@
 module Test.SqlType
-  ( sqlTypeSpecs
-  ) where
+  ( sqlTypeSpecs,
+  )
+where
 
-import Data.Pool (Pool)
 import qualified Data.ByteString.Char8 as B8
 import Data.Int (Int64)
+import Data.Pool (Pool)
 import qualified Data.Text as T
 import qualified Data.Time as Time
-import Test.Tasty.Hspec (Spec, describe, it, shouldBe, expectationFailure)
+import Test.Tasty.Hspec (Spec, describe, it, shouldBe)
 
 import Database.Orville.PostgreSQL.Connection (Connection, executeRawVoid)
 import Database.Orville.PostgreSQL.Internal.ExecutionResult (decodeRows)
-import Database.Orville.PostgreSQL.Internal.SqlType (SqlType
-                                                     -- numeric types
-                                                    , integer
-                                                    , serial
-                                                    , bigInteger
-                                                    , bigserial
-                                                    , double
-
-                                                    -- textual-ish types
-                                                    , boolean
-                                                    , unboundedText
-                                                    , fixedText
-                                                    , boundedText
-                                                    , textSearchVector
-
-                                                    -- date types
-                                                    , date
-                                                    , timestamp
-                                                    )
 import qualified Database.Orville.PostgreSQL.Internal.Expr as Expr
 import qualified Database.Orville.PostgreSQL.Internal.RawSql as RawSql
+import Database.Orville.PostgreSQL.Internal.SqlType
+  ( SqlType,
+    bigInteger,
+    bigSerial,
+    boolean,
+    boundedText,
+    date,
+    double,
+    fixedText,
+    integer,
+    nullableType,
+    serial,
+    textSearchVector,
+    timestamp,
+    unboundedText,
+  )
+import qualified Database.Orville.PostgreSQL.Internal.SqlValue as SqlValue
 
 sqlTypeSpecs :: Pool Connection -> Spec
-sqlTypeSpecs pool = describe "Tests of SqlType decode" $ do
+sqlTypeSpecs pool = describe "SqlType decoding tests" $ do
   integerSpecs pool
   bigIntegerSpecs pool
   serialSpecs pool
@@ -47,6 +46,7 @@ sqlTypeSpecs pool = describe "Tests of SqlType decode" $ do
   textSearchVectorSpecs pool
   dateSpecs pool
   timestampSpecs pool
+  nullableSpecs pool
 
 integerSpecs :: Pool Connection -> Spec
 integerSpecs pool = do
@@ -54,7 +54,7 @@ integerSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "INTEGER"
-        , rawSqlValue = B8.pack $ show (0 :: Int)
+        , rawSqlValue = Just $ B8.pack $ show (0 :: Int)
         , sqlType = integer
         , expectedValue = 0
         }
@@ -63,7 +63,7 @@ integerSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "INTEGER"
-        , rawSqlValue = B8.pack $ show (2147483647 :: Int)
+        , rawSqlValue = Just $ B8.pack $ show (2147483647 :: Int)
         , sqlType = integer
         , expectedValue = 2147483647
         }
@@ -72,7 +72,7 @@ integerSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "INTEGER"
-        , rawSqlValue = B8.pack $ show (-2147483648 :: Int)
+        , rawSqlValue = Just $ B8.pack $ show (-2147483648 :: Int)
         , sqlType = integer
         , expectedValue = -2147483648
         }
@@ -83,7 +83,7 @@ bigIntegerSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "BIGINT"
-        , rawSqlValue = B8.pack $ show (0 :: Int64)
+        , rawSqlValue = Just $ B8.pack $ show (0 :: Int64)
         , sqlType = bigInteger
         , expectedValue = 0
         }
@@ -92,7 +92,7 @@ bigIntegerSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "BIGINT"
-        , rawSqlValue = B8.pack $ show (21474836470 :: Int64)
+        , rawSqlValue = Just $ B8.pack $ show (21474836470 :: Int64)
         , sqlType = bigInteger
         , expectedValue = 21474836470
         }
@@ -103,7 +103,7 @@ serialSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "SERIAL"
-        , rawSqlValue = B8.pack $ show (0 :: Int)
+        , rawSqlValue = Just $ B8.pack $ show (0 :: Int)
         , sqlType = serial
         , expectedValue = 0
         }
@@ -112,7 +112,7 @@ serialSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "SERIAL"
-        , rawSqlValue = B8.pack $ show (2147483647 :: Int)
+        , rawSqlValue = Just $ B8.pack $ show (2147483647 :: Int)
         , sqlType = serial
         , expectedValue = 2147483647
         }
@@ -121,7 +121,7 @@ serialSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "SERIAL"
-        , rawSqlValue = B8.pack $ show (-2147483648 :: Int)
+        , rawSqlValue = Just $ B8.pack $ show (-2147483648 :: Int)
         , sqlType = serial
         , expectedValue = -2147483648
         }
@@ -132,8 +132,8 @@ bigSerialSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "BIGSERIAL"
-        , rawSqlValue = B8.pack $ show (0 :: Int64)
-        , sqlType = bigserial
+        , rawSqlValue = Just $ B8.pack $ show (0 :: Int64)
+        , sqlType = bigSerial
         , expectedValue = 0
         }
 
@@ -141,8 +141,8 @@ bigSerialSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "BIGSERIAL"
-        , rawSqlValue = B8.pack $ show (21474836470 :: Int64)
-        , sqlType = bigserial
+        , rawSqlValue = Just $ B8.pack $ show (21474836470 :: Int64)
+        , sqlType = bigSerial
         , expectedValue = 21474836470
         }
 
@@ -152,7 +152,7 @@ doubleSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "DOUBLE PRECISION"
-        , rawSqlValue = B8.pack $ show (0.0 :: Double)
+        , rawSqlValue = Just $ B8.pack $ show (0.0 :: Double)
         , sqlType = double
         , expectedValue = 0.0
         }
@@ -161,7 +161,7 @@ doubleSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "DOUBLE PRECISION"
-        , rawSqlValue = B8.pack $ show (1.5 :: Double)
+        , rawSqlValue = Just $ B8.pack $ show (1.5 :: Double)
         , sqlType = double
         , expectedValue = 1.5
         }
@@ -172,7 +172,7 @@ boolSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "BOOL"
-        , rawSqlValue = B8.pack $ show False
+        , rawSqlValue = Just $ B8.pack $ show False
         , sqlType = boolean
         , expectedValue = False
         }
@@ -181,7 +181,7 @@ boolSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "BOOL"
-        , rawSqlValue = B8.pack $ show True
+        , rawSqlValue = Just $ B8.pack $ show True
         , sqlType = boolean
         , expectedValue = True
         }
@@ -192,7 +192,7 @@ unboundedTextSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "TEXT"
-        , rawSqlValue = B8.pack "'abcde'"
+        , rawSqlValue = Just $ B8.pack "abcde"
         , sqlType = unboundedText
         , expectedValue = T.pack "abcde"
         }
@@ -203,7 +203,7 @@ fixedTextSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "CHAR(5)"
-        , rawSqlValue = B8.pack "'abcde'"
+        , rawSqlValue = Just $ B8.pack "abcde"
         , sqlType = fixedText 5
         , expectedValue = T.pack "abcde"
         }
@@ -212,7 +212,7 @@ fixedTextSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "CHAR(5)"
-        , rawSqlValue = B8.pack "'fghi'"
+        , rawSqlValue = Just $ B8.pack "fghi"
         , sqlType = fixedText 5
         , expectedValue = T.pack "fghi "
         }
@@ -223,7 +223,7 @@ boundedTextSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "VARCHAR(5)"
-        , rawSqlValue = B8.pack "'abcde'"
+        , rawSqlValue = Just $ B8.pack "abcde"
         , sqlType = boundedText 5
         , expectedValue = T.pack "abcde"
         }
@@ -232,7 +232,7 @@ boundedTextSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "VARCHAR(5)"
-        , rawSqlValue = B8.pack "'fghi'"
+        , rawSqlValue = Just $ B8.pack "fghi"
         , sqlType = boundedText 5
         , expectedValue = T.pack "fghi"
         }
@@ -243,7 +243,7 @@ textSearchVectorSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "TSVECTOR"
-        , rawSqlValue = B8.pack "'abcde'"
+        , rawSqlValue = Just $ B8.pack "'abcde'"
         , sqlType = textSearchVector
         , expectedValue = T.pack "'abcde'"
         }
@@ -253,7 +253,7 @@ textSearchVectorSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "TSVECTOR"
-        , rawSqlValue = B8.pack "'fghi'"
+        , rawSqlValue = Just $ B8.pack "'fghi'"
         , sqlType = textSearchVector
         , expectedValue = T.pack "'fghi'"
         }
@@ -264,7 +264,7 @@ dateSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "DATE"
-        , rawSqlValue = B8.pack "'2020-12-21'"
+        , rawSqlValue = Just $ B8.pack "'2020-12-21'"
         , sqlType = date
         , expectedValue = Time.fromGregorian 2020 12 21
         }
@@ -275,7 +275,7 @@ timestampSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "TIMESTAMP WITH TIME ZONE"
-        , rawSqlValue = B8.pack "'2020-12-21 00:00:32-00'"
+        , rawSqlValue = Just $ B8.pack "'2020-12-21 00:00:32-00'"
         , sqlType = timestamp
         , expectedValue = Time.UTCTime (Time.fromGregorian 2020 12 21) (Time.secondsToDiffTime 32)
         }
@@ -284,45 +284,69 @@ timestampSpecs pool = do
     runDecodingTest pool $
       DecodingTest
         { sqlTypeDDL = "TIMESTAMP WITH TIME ZONE"
-        , rawSqlValue = B8.pack "'2020-12-21 00:00:32+00'"
+        , rawSqlValue = Just $ B8.pack "'2020-12-21 00:00:32+00'"
         , sqlType = timestamp
         , expectedValue = Time.UTCTime (Time.fromGregorian 2020 12 21) (Time.secondsToDiffTime 32)
         }
 
-data DecodingTest a =
-  DecodingTest
-    { sqlTypeDDL :: String
-    , rawSqlValue :: B8.ByteString
-    , sqlType :: SqlType a
-    , expectedValue :: a
-    }
+nullableSpecs :: Pool Connection -> Spec
+nullableSpecs pool = do
+  it "Testing the decode of TEXT NULL with value 'abcde'" $ do
+    runDecodingTest pool $
+      DecodingTest
+        { sqlTypeDDL = "TEXT NULL"
+        , rawSqlValue = Just $ B8.pack "abcde"
+        , sqlType = nullableType unboundedText
+        , expectedValue = Just (T.pack "abcde")
+        }
+
+  it "Testing the decode of TEXT NULL with text value 'null'" $ do
+    runDecodingTest pool $
+      DecodingTest
+        { sqlTypeDDL = "TEXT NULL"
+        , rawSqlValue = Just $ B8.pack "null"
+        , sqlType = nullableType unboundedText
+        , expectedValue = Just (T.pack "null")
+        }
+
+  it "Testing the decode of TEXT NULL with value NULL" $ do
+    runDecodingTest pool $
+      DecodingTest
+        { sqlTypeDDL = "TEXT NULL"
+        , rawSqlValue = Nothing
+        , sqlType = nullableType unboundedText
+        , expectedValue = Nothing
+        }
+
+data DecodingTest a = DecodingTest
+  { sqlTypeDDL :: String
+  , rawSqlValue :: Maybe B8.ByteString
+  , sqlType :: SqlType a
+  , expectedValue :: a
+  }
 
 runDecodingTest :: (Show a, Eq a) => Pool Connection -> DecodingTest a -> IO ()
 runDecodingTest pool test = do
   dropAndRecreateTable pool "decoding_test" (sqlTypeDDL test)
 
-  let
-    tableName = Expr.rawTableName "decoding_test"
+  let tableName = Expr.rawTableName "decoding_test"
 
   RawSql.executeVoid pool $
     Expr.insertExprToSql $
-      Expr.insertExpr tableName [rawSqlValue test]
+      Expr.insertExpr
+        tableName
+        Nothing
+        (Expr.insertSqlValues [[SqlValue.fromRawBytesNullable (rawSqlValue test)]])
 
-  maybeResult <-
+  result <-
     RawSql.execute pool $
       Expr.queryExprToSql $
-        Expr.queryExpr Expr.selectStar (Expr.tableExpr tableName)
+        Expr.queryExpr Expr.selectStar (Expr.tableExpr tableName Nothing Nothing)
 
-  case maybeResult of
-    Nothing ->
-      expectationFailure "select returned nothing"
-
-    Just res -> do
-      (maybeA:_) <- decodeRows res (sqlType test)
-      shouldBe maybeA (Just (expectedValue test))
+  (maybeA : _) <- decodeRows result (sqlType test)
+  shouldBe maybeA (Just (expectedValue test))
 
 dropAndRecreateTable :: Pool Connection -> String -> String -> IO ()
-dropAndRecreateTable pool tableName sqlTypeDDL' = do
-  executeRawVoid pool . B8.pack $ "DROP TABLE IF EXISTS " <> tableName
-  executeRawVoid pool . B8.pack $ "CREATE TABLE " <> tableName <> "(foo " <> sqlTypeDDL' <> ")"
-
+dropAndRecreateTable pool tableName columnTypeDDL = do
+  executeRawVoid pool (B8.pack $ "DROP TABLE IF EXISTS " <> tableName) []
+  executeRawVoid pool (B8.pack $ "CREATE TABLE " <> tableName <> "(foo " <> columnTypeDDL <> ")") []

@@ -4,6 +4,8 @@ module PlanTest
   ) where
 
 import           Control.Monad (void)
+import           Data.Bifunctor (bimap)
+import           Data.Either (partitionEithers)
 import           Data.Function (on)
 import           Data.Int (Int32)
 import qualified Data.List as List
@@ -47,11 +49,32 @@ test_plan =
               (Plan.use param)
               (Plan.findMaybeOne rootTable rootIdField)
 
+      , testRootPlan "focusParam, using" run $
+          Plan.bind treePlan $ \param ->
+          Plan.using param $ Plan.focusParam treeRootId $ Plan.findMaybeOne rootTable rootIdField
+
+      , QC.testProperty "planList" $ \rootIds ->
+        QC.ioProperty $ do
+          actual <-
+            run $ do
+              TestDB.reset treeSchema
+              Plan.execute
+                (Plan.planList (Plan.findAll rootTable rootIdField))
+                rootIds
+
+          let expected :: [[Root]]
+              expected = map (const []) rootIds
+
+          pure $
+            QC.counterexample ("Expected: " ++ show expected) $
+            QC.counterexample ("Actual: " ++ show actual) $
+            (expected == actual)
+
       , QC.testProperty "many findAll includes all params in map" $ \rootIds ->
         QC.ioProperty $ do
           actual <-
             run $ do
-              TestDB.reset testSchema
+              TestDB.reset treeSchema
               Many.toMap <$>
                 Plan.execute
                   (Plan.planMany (Plan.findAll rootTable rootIdField))
@@ -75,7 +98,7 @@ test_plan =
            in QC.ioProperty $ do
                 actual <-
                   run $ do
-                    TestDB.reset testSchema
+                    TestDB.reset treeSchema
                     void (O.insertRecord rootTable root)
                     void (O.insertRecordMany branchTable branches)
                     void (O.insertRecordMany leafTable leaves)
@@ -88,6 +111,40 @@ test_plan =
                   QC.counterexample ("Expected: " ++ show expected) $
                   QC.counterexample ("Actual: " ++ show actual) $
                   (expected == actual)
+
+      , QC.testProperty "planEither" $ \leftAndRightEntitySet ->
+        QC.ioProperty $ do
+          let
+            leftAndRightEntityList =
+              Set.toList leftAndRightEntitySet
+
+            (leftEntities, rightEntities) =
+              partitionEithers leftAndRightEntityList
+
+            leftAndRightPlan =
+              Plan.planMany $
+                Plan.planEither
+                  (Plan.findOne leftEntityTable idField)
+                  (Plan.findOne rightEntityTable idField)
+
+            leftAndRightIds =
+              map (bimap leftEntityId rightEntityId) leftAndRightEntityList
+
+          entitiesFound <- run $ do
+            TestDB.reset [O.Table leftEntityTable, O.Table rightEntityTable]
+            O.insertRecordMany leftEntityTable leftEntities
+            O.insertRecordMany rightEntityTable rightEntities
+            Many.elems <$> Plan.execute leftAndRightPlan leftAndRightIds
+
+          pure $
+            QC.counterexample ("Expected: " ++ show leftAndRightEntityList) $
+            QC.counterexample ("Actual: " ++ show entitiesFound) $
+            entitiesFound == leftAndRightEntityList
+
+      , testRootPlan "planMaybe" run $
+          Plan.bind Plan.askParam $ \param ->
+          Plan.using (Just <$> param) $
+          Plan.planMaybe (Plan.findOne rootTable rootIdField)
       ]
 
 -- mkTreeRecords projects a Tree into the Root, Branch and Leaf entities
@@ -116,7 +173,7 @@ testRootPlan groupName run plan =
     [ QC.testProperty "One" $ \expected ->
         QC.ioProperty $ do
           actual <- run $ do
-            TestDB.reset testSchema
+            TestDB.reset treeSchema
             void (O.insertRecord rootTable expected)
             Plan.execute plan (rootId expected)
 
@@ -136,7 +193,7 @@ testRootPlan groupName run plan =
                 map (\root -> (rootId root, Just root)) uniqRoots
 
           actuals <- run $ do
-            TestDB.reset testSchema
+            TestDB.reset treeSchema
             void (O.insertRecordMany rootTable uniqRoots)
             Many.toMap <$>
               Plan.execute
@@ -226,8 +283,8 @@ treeIdField :: O.FieldDefinition O.NotNull TreeId
 treeIdField =
   O.int32Field "tree_id" `O.withConversion` O.convertSqlType treeIdToInt TreeId
 
-testSchema :: O.SchemaDefinition
-testSchema = [O.Table rootTable, O.Table branchTable, O.Table leafTable]
+treeSchema :: O.SchemaDefinition
+treeSchema = [O.Table rootTable, O.Table branchTable, O.Table leafTable]
 
 rootTable :: O.TableDefinition Root Root RootId
 rootTable =
@@ -295,3 +352,36 @@ mkTree trId rtId leafCounts brIds lfIds = Tree trId rtId branches
     branchLeafIds (count:rest) ids =
       let c = fromInteger . toInteger $ count
        in Set.fromList (take c ids) : branchLeafIds rest (drop c ids)
+
+
+newtype LeftEntity =
+  LeftEntity
+    { leftEntityId :: Int32
+    } deriving (Eq, Ord, Show, QC.Arbitrary)
+
+leftEntityTable :: O.TableDefinition LeftEntity LeftEntity Int32
+leftEntityTable =
+  O.mkTableDefinition $ O.TableParams
+    { O.tblName = "left_entity"
+    , O.tblPrimaryKey = O.primaryKey idField
+    , O.tblMapper = LeftEntity <$> O.attrField leftEntityId idField
+    , O.tblGetKey = leftEntityId
+    , O.tblSafeToDelete = []
+    , O.tblComments = O.noComments
+    }
+
+newtype RightEntity =
+  RightEntity
+    { rightEntityId :: Int32
+    } deriving (Eq, Ord, Show, QC.Arbitrary)
+
+rightEntityTable :: O.TableDefinition RightEntity RightEntity Int32
+rightEntityTable =
+  O.mkTableDefinition $ O.TableParams
+    { O.tblName = "right_entity"
+    , O.tblPrimaryKey = O.primaryKey idField
+    , O.tblMapper = RightEntity <$> O.attrField rightEntityId idField
+    , O.tblGetKey = rightEntityId
+    , O.tblSafeToDelete = []
+    , O.tblComments = O.noComments
+    }

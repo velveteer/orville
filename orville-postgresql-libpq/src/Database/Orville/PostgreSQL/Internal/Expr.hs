@@ -1,89 +1,81 @@
-{-|
+{-# OPTIONS_GHC -Wno-missing-import-lists #-}
+
+{- |
 Module    : Database.Orville.PostgreSQL.Expr
-Copyright : Flipstone Technology Partners 2016-2020
+Copyright : Flipstone Technology Partners 2016-2021
 License   : MIT
 -}
-
 module Database.Orville.PostgreSQL.Internal.Expr
-  ( QueryExpr
-  , queryExpr
-  , SelectList
-  , selectStar
-  , TableExpr
-  , tableExpr
-  , TableName
-  , rawTableName
-  , InsertExpr
-  , insertExpr
-  , queryExprToSql
-  , insertExprToSql
-  ) where
+  ( QueryExpr,
+    queryExpr,
+    queryExprToSql,
+    SelectList,
+    selectStar,
+    selectColumns,
+    TableExpr,
+    tableExpr,
+    TableName,
+    tableNameToSql,
+    rawTableName,
+    ColumnName,
+    rawColumnName,
+    columnNameToSql,
+    sqlToColumnName,
+    WhereClause,
+    whereClause,
+    BooleanExpr,
+    orExpr,
+    andExpr,
+    parenthesized,
+    comparison,
+    columnEquals,
+    columnGreaterThan,
+    columnLessThan,
+    columnGreaterThanOrEqualTo,
+    columnLessThanOrEqualTo,
+    InsertExpr,
+    insertExpr,
+    insertExprToSql,
+    InsertColumnList,
+    insertColumnList,
+    InsertSource,
+    insertSqlValues,
+    DataType,
+    timestampWithZone,
+    date,
+    tsvector,
+    varchar,
+    char,
+    text,
+    boolean,
+    doublePrecision,
+    bigSerial,
+    bigInt,
+    serial,
+    int,
+    ColumnDefinition,
+    columnDefinition,
+    columnDefinitionToSql,
+    OrderByClause,
+    orderByClauseToSql,
+    orderByClause,
+    appendOrderBy,
+    ascendingOrder,
+    descendingOrder,
+    orderByExpr,
+    CreateTableExpr,
+    createTableExpr,
+    createTableExprToSql,
+    PrimaryKeyExpr,
+    primaryKeyExpr,
+    primaryKeyToSql,
+  )
+where
 
-import qualified Data.ByteString.Char8 as B8
-
-import           Database.Orville.PostgreSQL.Internal.RawSql (RawSql)
-import qualified Database.Orville.PostgreSQL.Internal.RawSql as RawSql
-
--- This is a rough model of "query specification" see https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html#_7_16_query_specification for more detail than you probably want
-newtype QueryExpr =
-  QueryExpr RawSql
-
-queryExpr :: SelectList -> TableExpr -> QueryExpr
-queryExpr selectList table =
-  QueryExpr $
-    mconcat
-      [ RawSql.fromString "SELECT "
-      , selectListToSql selectList
-      , RawSql.fromString " FROM "
-      , tableExprToSql table
-      ]
-
-queryExprToSql :: QueryExpr -> RawSql
-queryExprToSql (QueryExpr sql) = sql
-
-newtype SelectList =
-  SelectList RawSql
-
-selectStar :: SelectList
-selectStar =
-  SelectList (RawSql.fromString "*")
-
-selectListToSql :: SelectList -> RawSql
-selectListToSql (SelectList sql) =
-  sql
-
-newtype TableExpr =
-  TableExpr RawSql
-
-tableExprToSql :: TableExpr -> RawSql
-tableExprToSql (TableExpr sql) = sql
-
-tableExpr :: TableName -> TableExpr
-tableExpr = TableExpr . tableNameToSql
-
-newtype TableName =
-  TableName RawSql
-
-tableNameToSql :: TableName -> RawSql
-tableNameToSql (TableName sql) = sql
-
-rawTableName :: String -> TableName
-rawTableName =
-  TableName . RawSql.fromString
-
-newtype InsertExpr =
-  InsertExpr RawSql
-
-insertExpr :: TableName -> [B8.ByteString] -> InsertExpr
-insertExpr target rowValues =
-  InsertExpr $
-    mconcat
-      [ RawSql.fromString "INSERT INTO "
-      , tableNameToSql target
-      , RawSql.fromString " VALUES ("
-      , RawSql.fromBytes (B8.intercalate (B8.pack ",") rowValues)
-      , RawSql.fromString ")"
-    ]
-
-insertExprToSql :: InsertExpr -> RawSql
-insertExprToSql (InsertExpr sql) = sql
+import Database.Orville.PostgreSQL.Internal.Expr.ColumnDefinition
+import Database.Orville.PostgreSQL.Internal.Expr.InsertExpr
+import Database.Orville.PostgreSQL.Internal.Expr.Name
+import Database.Orville.PostgreSQL.Internal.Expr.OrderBy
+import Database.Orville.PostgreSQL.Internal.Expr.Query
+import Database.Orville.PostgreSQL.Internal.Expr.TableDefinition
+import Database.Orville.PostgreSQL.Internal.Expr.Where

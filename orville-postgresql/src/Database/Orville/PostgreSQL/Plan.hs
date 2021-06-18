@@ -24,6 +24,10 @@ module Database.Orville.PostgreSQL.Plan
   , chain
   , apply
   , planMany
+  , planList
+  , focusParam
+  , planEither
+  , planMaybe
 
   -- * Bridges from other types into Plan
   , Op.AssertionFailed
@@ -32,6 +36,7 @@ module Database.Orville.PostgreSQL.Plan
   , planOperation
   ) where
 
+import           Data.Either (partitionEithers)
 import qualified Control.Monad.Catch as Catch
 
 import qualified Database.Orville.PostgreSQL.Core as Core
@@ -77,6 +82,10 @@ data Plan scope param result where
 
   PlanMany :: (forall manyScope. Plan manyScope param result)
            -> Plan scope [param] (Many param result)
+
+  PlanEither :: (forall leftScope. Plan leftScope leftParam leftResult)
+             -> (forall rightScope. Plan rightScope rightParam rightResult)
+             -> Plan scope (Either leftParam rightParam) (Either leftResult rightResult)
 
   Bind :: Plan scope param a
        -> (Planned scope a -> Plan scope param result)
@@ -184,7 +193,7 @@ planOperation =
   this case. If the plan is executed with multiple inputs the same set of all
   the results will be used as the results for each of the input parameters.
 -}
-planSelect :: Select row -> Plan scope param [row]
+planSelect :: Select row -> Plan scope () [row]
 planSelect select =
   planOperation (Op.findSelect select)
 
@@ -314,6 +323,54 @@ planMany =
   PlanMany
 
 {-|
+  'planList' lifts a plan so both its param and result become lists.
+  This saves you from having to fmap in 'Many.elems' when all you want back
+  from a 'Many' is the list of results inside it.
+-}
+planList :: (forall scope. Plan scope param result)
+         -> Plan listScope [param] [result]
+planList plan =
+  Many.elems <$> planMany plan
+
+{-|
+  'focusParam' builds a plan from a function and an existing plan taking the
+  result of that function as input. This is especially useful when there is some
+  structure, and a plan that only needs a part of that structure as input. The
+  function argument can access part of the structure for the plan argument to use,
+  so the final returned plan can take the entire structure as input.
+-}
+focusParam :: (a -> b)
+           -> (forall focusedScope. Plan focusedScope b result)
+           -> Plan scope a result
+focusParam focuser plan =
+  chain (focuser <$> askParam) plan
+
+
+{-|
+  'planEither' lets you construct a plan that branches by executing a different
+  plan for the 'Left' and 'Right' sides of an 'Either' value. When used with a
+  single input parameter only one of the two plans will be used, based on the
+  input parameter. When used on multiple input parameters, each of the two
+  plans will be executed only once with all the 'Left' and 'Right' values
+  provided as input parameters respectively.
+-}
+planEither :: (forall leftScope. Plan leftScope leftParam leftResult)
+           -> (forall rightScope. Plan rightScope rightParam rightResult)
+           -> Plan scope (Either leftParam rightParam) (Either leftResult rightResult)
+planEither =
+  PlanEither
+
+{-|
+  'planMaybe' lifts a plan so both its param and result become 'Maybe's. This is
+  useful when modifying an existing plan to deal with optionality. Writing just
+  one plan can then easily produce both the required and optional versions.
+-}
+planMaybe :: (forall s. Plan s a b) -> Plan scope (Maybe a) (Maybe b)
+planMaybe plan =
+  focusParam (maybe (Left ()) Right) $
+    either id id <$> planEither (pure Nothing) (Just <$> plan)
+
+{-|
   'bind' gives access to the results of a plan to use as input values to future
   plans. The plan result is given the input parameter to the provided function,
   which must produce the remaining 'Plan' to be executed. The value will be
@@ -435,6 +492,14 @@ executeOne plan param =
     PlanMany manyPlan ->
       executeMany manyPlan param
 
+    PlanEither leftPlan rightPlan ->
+      case param of
+        Left leftParam ->
+          Left <$> executeOne leftPlan leftParam
+
+        Right rightParam ->
+          Right <$> executeOne rightPlan rightParam
+
     Bind intermPlan continue -> do
       interm <- executeOne intermPlan param
       executeOne
@@ -485,6 +550,24 @@ executeMany plan params =
           Many.fromKeys subParams (\k -> Many.lookup k allResults)
 
       pure $ Many.fromKeys params (Right . restrictResults)
+
+    PlanEither leftPlan rightPlan -> do
+      let
+        (leftParams, rightParams) = partitionEithers params
+
+      leftResults <- executeMany leftPlan leftParams
+      rightResults <- executeMany rightPlan rightParams
+
+      let
+        eitherResult eitherK =
+          case eitherK of
+            Left k ->
+              Left <$> Many.lookup k leftResults
+
+            Right k ->
+              Right <$> Many.lookup k rightResults
+
+      pure $ Many.fromKeys params eitherResult
 
     Bind intermPlan continue -> do
       interms <- executeMany intermPlan params
@@ -548,6 +631,9 @@ explainPlan mult plan =
 
     PlanMany manyPlan -> do
       explainPlan ExplainMany manyPlan
+
+    PlanEither leftPlan rightPlan ->
+      explainPlan mult leftPlan <> explainPlan mult rightPlan
 
     Bind intermPlan continue ->
       let

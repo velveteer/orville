@@ -1,5 +1,5 @@
 name: orville-postgresql
-version: '0.8.3.0'
+version: '0.9.0.0'
 synopsis: ORM
 description: ORM library for PostgreSQL
 category: Database
@@ -54,6 +54,7 @@ library:
     - Database.Orville.PostgreSQL.MonadUnliftIO
     - Database.Orville.PostgreSQL.Popper
     - Database.Orville.PostgreSQL.Plan
+    - Database.Orville.PostgreSQL.Plan.Explanation
     - Database.Orville.PostgreSQL.Plan.Many
     - Database.Orville.PostgreSQL.Plan.Operation
     - Database.Orville.PostgreSQL.Raw
