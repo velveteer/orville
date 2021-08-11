@@ -217,8 +217,12 @@ toText =
   used with the database.
 -}
 fromDay :: Time.Day -> SqlValue
-fromDay =
-  SqlValue . PGTextFormatValue.unsafeFromByteString . B8.pack . Time.showGregorian
+fromDay day =
+  let (isBC, newDay) = normalizeBCDay day
+   in SqlValue . PGTextFormatValue.unsafeFromByteString . B8.pack $
+        if not isBC
+          then Time.showGregorian day
+          else Time.formatTime Time.defaultTimeLocale "%Y-%m-%dBC" newDay
 
 {- |
   Attempts to decode a 'SqlValue' as into a 'Time.Day' value by parsing it
@@ -233,15 +237,26 @@ toDay sqlValue = do
     (Time.iso8601DateFormat Nothing)
     (T.unpack txt)
 
+-- | Converts negative years to years paired with an 'isBC' boolean flag
+normalizeBCDay :: Time.Day -> (Bool, Time.Day)
+normalizeBCDay day =
+  let (y, m, d) = Time.toGregorian day
+      isBC = y < 0
+      newDay = Time.fromGregorian (abs y) m d
+   in (isBC, newDay)
+
 {- |
   Encodes a 'Time.UTCTime' in ISO 8601 format for usage with the database.
 -}
 fromUTCTime :: Time.UTCTime -> SqlValue
-fromUTCTime =
-  SqlValue
-    . PGTextFormatValue.unsafeFromByteString
-    . B8.pack
-    . Time.formatTime Time.defaultTimeLocale "%0Y-%m-%dT%H:%M:%S"
+fromUTCTime original =
+  let (isBC, newDay) = normalizeBCDay $ Time.utctDay original
+      utcTimeToConvert = original {Time.utctDay = newDay}
+   in SqlValue
+        . PGTextFormatValue.unsafeFromByteString
+        . B8.pack
+        . Time.formatTime Time.defaultTimeLocale (if isBC then "%FBC T%H:%M:%S %Z" else "%FT%H:%M:%S %Z")
+        $ utcTimeToConvert
 
 {- |
   Attempts to decode a 'SqlValue' as a 'Time.UTCTime' formatted in iso8601
