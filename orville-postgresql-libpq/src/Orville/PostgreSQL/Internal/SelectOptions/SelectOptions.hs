@@ -6,6 +6,8 @@ module Orville.PostgreSQL.Internal.SelectOptions.SelectOptions
     selectWhereClause,
     selectOrderByClause,
     selectGroupByClause,
+    selectLimitExpr,
+    selectOffsetExpr,
     distinct,
     where_,
     orderBy,
@@ -16,11 +18,10 @@ module Orville.PostgreSQL.Internal.SelectOptions.SelectOptions
 where
 
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.Monoid (First (First))
+import Data.Monoid (First (First, getFirst))
 
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
-import qualified Orville.PostgreSQL.Internal.Expr.GroupBy.GroupByExpr as Expr
-import qualified Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr as Expr
+import Orville.PostgreSQL.Internal.SelectOptions.OrderBy (OrderBy, orderByToClause)
 import Orville.PostgreSQL.Internal.SelectOptions.WhereCondition (WhereCondition, whereAnd, whereConditionToBooleanExpr)
 
 {- |
@@ -32,7 +33,7 @@ import Orville.PostgreSQL.Internal.SelectOptions.WhereCondition (WhereCondition,
 data SelectOptions = SelectOptions
   { i_distinct :: First Bool
   , i_whereConditions :: [WhereCondition]
-  , i_orderByExprs :: [Expr.OrderByExpr]
+  , i_orderBy :: Maybe OrderBy
   , i_limitExpr :: First Expr.LimitExpr
   , i_offsetExpr :: First Expr.OffsetExpr
   , i_groupByExprs :: [Expr.GroupByExpr]
@@ -52,7 +53,7 @@ emptySelectOptions =
   SelectOptions
     { i_distinct = mempty
     , i_whereConditions = []
-    , i_orderByExprs = []
+    , i_orderBy = mempty
     , i_limitExpr = mempty
     , i_offsetExpr = mempty
     , i_groupByExprs = []
@@ -68,7 +69,7 @@ appendSelectOptions left right =
   SelectOptions
     (i_distinct left <> i_distinct right)
     (i_whereConditions left <> i_whereConditions right)
-    (i_orderByExprs left <> i_orderByExprs right)
+    (i_orderBy left <> i_orderBy right)
     (i_limitExpr left <> i_limitExpr right)
     (i_offsetExpr left <> i_offsetExpr right)
     (i_groupByExprs left <> i_groupByExprs right)
@@ -111,12 +112,8 @@ distinct =
   where no 'OrderByClause's have been specified.
 -}
 selectOrderByClause :: SelectOptions -> Maybe Expr.OrderByClause
-selectOrderByClause selectOptions =
-  case i_orderByExprs selectOptions of
-    [] ->
-      Nothing
-    (first : rest) ->
-      Just . Expr.orderByClause $ foldl Expr.appendOrderBy first rest
+selectOrderByClause =
+  fmap orderByToClause . i_orderBy
 
 {- |
   Builds the 'Expr.GroupByClause' that should be used to include the
@@ -129,7 +126,23 @@ selectGroupByClause selectOptions =
     [] ->
       Nothing
     (first : rest) ->
-      Just . Expr.groupByClause $ foldl Expr.appendGroupBy first rest
+      Just . Expr.groupByClause $ foldl Expr.appendGroupByExpr first rest
+
+{- |
+  Builds a 'Expr.LimitExpr' that will limit the query results to the
+  number specified in the 'SelectOptions' (if any)
+-}
+selectLimitExpr :: SelectOptions -> Maybe Expr.LimitExpr
+selectLimitExpr =
+  getFirst . i_limitExpr
+
+{- |
+  Builds a 'Expr.OffsetExpr' that will limit the query results to the
+  number specified in the 'SelectOptions' (if any)
+-}
+selectOffsetExpr :: SelectOptions -> Maybe Expr.OffsetExpr
+selectOffsetExpr =
+  getFirst . i_offsetExpr
 
 {- |
   Constructs a 'SelectOptions' with just the given 'WhereCondition'.
@@ -141,12 +154,12 @@ where_ condition =
     }
 
 {- |
-  Constructs a 'SelectOptions' with just the given 'OrderByExpr'.
+  Constructs a 'SelectOptions' with just the given 'OrderBy'.
 -}
-orderBy :: Expr.OrderByExpr -> SelectOptions
-orderBy orderByExpr =
+orderBy :: OrderBy -> SelectOptions
+orderBy order =
   emptySelectOptions
-    { i_orderByExprs = [orderByExpr]
+    { i_orderBy = Just order
     }
 
 {- |

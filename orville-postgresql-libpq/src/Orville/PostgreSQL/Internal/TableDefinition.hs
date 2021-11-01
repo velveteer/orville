@@ -7,31 +7,38 @@ module Orville.PostgreSQL.Internal.TableDefinition
     NoKey,
     mkTableDefinition,
     mkTableDefinitionWithoutKey,
+    dropColumns,
+    columnsToDrop,
+    tableIdentifier,
     tableName,
-    unqualifiedTableName,
-    unqualifiedTableNameString,
-    tableSchemaName,
-    tableSchemaNameString,
     setTableSchema,
+    tableConstraints,
+    addTableConstraints,
     tablePrimaryKey,
     tableMarshaller,
     mkInsertExpr,
     mkCreateTableExpr,
+    mkTableColumnDefinitions,
+    mkTablePrimaryKeyExpr,
     mkInsertColumnList,
     mkInsertSource,
-    mkQueryExpr,
     mkUpdateExpr,
     mkDeleteExpr,
+    ReturningOption (WithoutReturning, WithReturning),
   )
 where
 
 import Data.List.NonEmpty (NonEmpty, toList)
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 
+import Orville.PostgreSQL.Internal.ConstraintDefinition (ConstraintDefinition, ConstraintMigrationKey, constraintMigrationKey, constraintSqlExpr)
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
-import Orville.PostgreSQL.Internal.FieldDefinition (FieldDefinition, fieldColumnDefinition, fieldColumnName, fieldValueToSqlValue)
+import Orville.PostgreSQL.Internal.FieldDefinition (fieldColumnDefinition, fieldColumnName, fieldValueToSqlValue)
 import Orville.PostgreSQL.Internal.PrimaryKey (PrimaryKey, mkPrimaryKeyExpr, primaryKeyEqualsExpr)
-import Orville.PostgreSQL.Internal.SqlMarshaller (FieldFold, SqlMarshaller, foldMarshallerFields)
+import Orville.PostgreSQL.Internal.SqlMarshaller (FieldFold, ReadOnlyColumnOption (ExcludeReadOnlyColumns, IncludeReadOnlyColumns), SqlMarshaller, collectFromField, foldMarshallerFields, marshallerColumnNames)
 import Orville.PostgreSQL.Internal.SqlValue (SqlValue)
+import Orville.PostgreSQL.Internal.TableIdentifier (TableIdentifier, setTableIdSchema, tableIdQualifiedName, unqualifiedNameToTableId)
 
 {- |
   Contains the definition of a SQL table for Orville to use for generating
@@ -47,10 +54,11 @@ import Orville.PostgreSQL.Internal.SqlValue (SqlValue)
     from the result set when entities are queried from this table.
 -}
 data TableDefinition key writeEntity readEntity = TableDefinition
-  { _tableNameString :: String
-  , _tableSchemaNameString :: Maybe String
+  { _tableIdentifier :: TableIdentifier
   , _tablePrimaryKey :: TablePrimaryKey key
   , _tableMarshaller :: SqlMarshaller writeEntity readEntity
+  , _tableColumnsToDrop :: Set.Set String
+  , _tableConstraints :: Map.Map ConstraintMigrationKey ConstraintDefinition
   }
 
 data HasKey key
@@ -94,11 +102,48 @@ mkTableDefinitionWithoutKey ::
   TableDefinition NoKey writeEntity readEntity
 mkTableDefinitionWithoutKey name marshaller =
   TableDefinition
-    { _tableNameString = name
-    , _tableSchemaNameString = Nothing
+    { _tableIdentifier = unqualifiedNameToTableId name
     , _tablePrimaryKey = TableHasNoKey
     , _tableMarshaller = marshaller
+    , _tableColumnsToDrop = Set.empty
+    , _tableConstraints = Map.empty
     }
+
+{- |
+  Annotates a 'TableDefinition' with a direction to drop columns if they are
+  found in the database. Orville does not drop columns during auto migration
+  unless they are explicitly requested to be dropped via 'dropColumns'.
+
+  If you remove a reference to a column from the table's 'SqlMarshaller'
+  without adding the column's name to 'dropColumns', Orville will operate as if
+  the column does not exist without actually dropping the column. This is often
+  useful if you're not sure you want to lose the data in the column, or if you
+  have zero down-time deployments, which requires the column not be referenced
+  by deployed code before it can be dropped.
+-}
+dropColumns ::
+  -- | Columns that should be dropped from the table
+  [String] ->
+  TableDefinition key writeEntity readEntity ->
+  TableDefinition key writeEntity readEntity
+dropColumns columns tableDef =
+  tableDef
+    { _tableColumnsToDrop = _tableColumnsToDrop tableDef <> Set.fromList columns
+    }
+
+{- |
+  Returns the set of columns that have be marked be dropped by 'dropColumns'
+-}
+columnsToDrop :: TableDefinition key writeEntity readEntity -> Set.Set String
+columnsToDrop =
+  _tableColumnsToDrop
+
+{- |
+  Returns the table's 'TableIdentifier'
+-}
+tableIdentifier :: TableDefinition key writeEntity readEntity -> TableIdentifier
+tableIdentifier =
+  _tableIdentifier
 
 {- |
   Returns the table's name as an expression that can be used to build SQL
@@ -106,43 +151,8 @@ mkTableDefinitionWithoutKey name marshaller =
   with it.
 -}
 tableName :: TableDefinition key writeEntity readEntity -> Expr.QualifiedTableName
-tableName tableDef =
-  Expr.qualifiedTableName
-    (tableSchemaName tableDef)
-    (unqualifiedTableName tableDef)
-
-{- |
-  Returns the table's _unqualified_ name as an expression tat can be used to
-  build SQL. You probably want to use 'tableName' instead to avoid having the
-  qualify the table name yourself.
--}
-unqualifiedTableName :: TableDefinition key writeEntity readEntity -> Expr.TableName
-unqualifiedTableName =
-  Expr.tableName . _tableNameString
-
-{- |
-  Returns the table's _unqualified_ name as a 'String'
--}
-unqualifiedTableNameString :: TableDefinition key writeEntity readEntity -> String
-unqualifiedTableNameString =
-  _tableNameString
-
-{- |
-  Returns the name of the schema associated with the table as an expression to
-  be used for building SQL. If no schema name is associated with the table,
-  no schema qualifier will be included with the table name when executing sql
-  statements.
--}
-tableSchemaName :: TableDefinition key writeEntity readEntity -> Maybe Expr.SchemaName
-tableSchemaName =
-  fmap Expr.schemaName . _tableSchemaNameString
-
-{- |
-  Returns the name of the schema associated with the table as a 'String', if any.
--}
-tableSchemaNameString :: TableDefinition key writeEntity readEntity -> Maybe String
-tableSchemaNameString =
-  _tableSchemaNameString
+tableName =
+  tableIdQualifiedName . _tableIdentifier
 
 {- |
   Set's the table's schema to the name in the given string, which will be
@@ -156,8 +166,37 @@ setTableSchema ::
   TableDefinition key writeEntity readEntity
 setTableSchema schemaName tableDef =
   tableDef
-    { _tableSchemaNameString = Just schemaName
+    { _tableIdentifier = setTableIdSchema schemaName (_tableIdentifier tableDef)
     }
+
+{- |
+  Retrieves all the table constraints that have been added to the table via
+  'addTableConstraints'.
+-}
+tableConstraints ::
+  TableDefinition key writeEntity readEntity ->
+  Map.Map ConstraintMigrationKey ConstraintDefinition
+tableConstraints =
+  _tableConstraints
+
+{- |
+  Adds the given table constraints to the table definition.
+
+  Note: If multiple constraints are added with the same
+  'ConstraintMigrationKey', only the last one that is added will be part of the
+  'TableDefinition'. Any previously added constraint with the same key is
+  replaced by the new one.
+-}
+addTableConstraints ::
+  [ConstraintDefinition] ->
+  TableDefinition key writeEntity readEntity ->
+  TableDefinition key writeEntity readEntity
+addTableConstraints constraintDefs tableDef =
+  let addConstraint constraint constraintMap =
+        Map.insert (constraintMigrationKey constraint) constraint constraintMap
+   in tableDef
+        { _tableConstraints = foldr addConstraint (_tableConstraints tableDef) constraintDefs
+        }
 
 {- |
   Returns the primary key for the table, as defined at construction via 'mkTableDefinition'.
@@ -181,38 +220,84 @@ mkCreateTableExpr ::
   TableDefinition key writeEntity readEntity ->
   Expr.CreateTableExpr
 mkCreateTableExpr tableDef =
-  let columnDefinitions =
-        foldMarshallerFields
-          (tableMarshaller tableDef)
-          []
-          (collectFromField fieldColumnDefinition)
-
-      maybePrimaryKeyExpr =
-        case _tablePrimaryKey tableDef of
-          TableHasKey primaryKey ->
-            Just $mkPrimaryKeyExpr primaryKey
-          TableHasNoKey ->
-            Nothing
-   in Expr.createTableExpr
-        (tableName tableDef)
-        columnDefinitions
-        maybePrimaryKeyExpr
+  Expr.createTableExpr
+    (tableName tableDef)
+    (mkTableColumnDefinitions tableDef)
+    (mkTablePrimaryKeyExpr tableDef)
+    (map constraintSqlExpr . Map.elems . _tableConstraints $ tableDef)
 
 {- |
-  Builds an 'Expr.InsertExpr' that will insert the given entities into the
-  SQL table when it is executed.
+  Builds the 'Expr.ColumnDefinitions' for all the fields described by the
+  table definition's 'SqlMarshaller'.
+-}
+mkTableColumnDefinitions ::
+  TableDefinition key writeEntity readEntity ->
+  [Expr.ColumnDefinition]
+mkTableColumnDefinitions tableDef =
+  foldMarshallerFields
+    (tableMarshaller tableDef)
+    []
+    (collectFromField IncludeReadOnlyColumns fieldColumnDefinition)
+
+{- |
+  Builds the 'Expr.PrimaryKeyExpr' for this table, or none of this table has no
+  primary key.
+-}
+mkTablePrimaryKeyExpr ::
+  TableDefinition key writeEntity readEntity ->
+  Maybe Expr.PrimaryKeyExpr
+mkTablePrimaryKeyExpr tableDef =
+  case _tablePrimaryKey tableDef of
+    TableHasKey primaryKey ->
+      Just $ mkPrimaryKeyExpr primaryKey
+    TableHasNoKey ->
+      Nothing
+
+{- |
+  Specifies whether or not a @RETURNING@ clause should be included when a
+  query expression is built. This type is found as a parameter on a number
+  of the query building functions related to 'TableDefinition'.
+-}
+data ReturningOption
+  = WithoutReturning
+  | WithReturning
+
+mkReturningClause ::
+  ReturningOption ->
+  TableDefinition key writeEntity readEntty ->
+  Maybe Expr.ReturningExpr
+mkReturningClause returningOption tableDef =
+  case returningOption of
+    WithoutReturning ->
+      Nothing
+    WithReturning ->
+      Just
+        . Expr.returningExpr
+        . marshallerColumnNames IncludeReadOnlyColumns
+        . tableMarshaller
+        $ tableDef
+
+{- |
+  Builds an 'Expr.InsertExpr' that will insert the given entities into the SQL
+  table when it is executed. A @RETURNING@ clause with either be included to
+  return the insert rows or not, depending on the 'ReturnOption' given.
 -}
 mkInsertExpr ::
+  ReturningOption ->
   TableDefinition key writeEntity readEntity ->
   NonEmpty writeEntity ->
   Expr.InsertExpr
-mkInsertExpr tableDef entities =
-  let columnList =
+mkInsertExpr returningOption tableDef entities =
+  let insertColumnList =
         mkInsertColumnList . tableMarshaller $ tableDef
 
       insertSource =
         mkInsertSource (tableMarshaller tableDef) entities
-   in Expr.insertExpr (tableName tableDef) (Just columnList) insertSource
+   in Expr.insertExpr
+        (tableName tableDef)
+        (Just insertColumnList)
+        insertSource
+        (mkReturningClause returningOption tableDef)
 
 {- |
   Builds an 'Expr.InsertColumnList' that specifies the columns for an
@@ -226,7 +311,7 @@ mkInsertColumnList ::
   SqlMarshaller writeEntity readEntity ->
   Expr.InsertColumnList
 mkInsertColumnList =
-  Expr.insertColumnList . marshallerColumnNames
+  Expr.insertColumnList . marshallerColumnNames ExcludeReadOnlyColumns
 
 {- |
   Builds an 'Expr.InsertSource' that will insert the given entities with their
@@ -253,8 +338,10 @@ mkInsertSource marshaller entities =
   built.
 -}
 collectSqlValue :: FieldFold entity (entity -> [SqlValue])
-collectSqlValue fieldDef accessor encodeRest entity =
-  fieldValueToSqlValue fieldDef (accessor entity) : (encodeRest entity)
+collectSqlValue fieldDef maybeAccessor encodeRest entity =
+  case maybeAccessor of
+    Just accessor -> fieldValueToSqlValue fieldDef (accessor entity) : (encodeRest entity)
+    Nothing -> (encodeRest entity)
 
 {- |
   Builds an 'Expr.UpdateExpr' that will update the entity at the given 'key'
@@ -262,11 +349,12 @@ collectSqlValue fieldDef accessor encodeRest entity =
   SQL table when it is executed.
 -}
 mkUpdateExpr ::
+  ReturningOption ->
   TableDefinition (HasKey key) writeEntity readEntity ->
   key ->
   writeEntity ->
   Expr.UpdateExpr
-mkUpdateExpr tableDef key writeEntity =
+mkUpdateExpr returningOption tableDef key writeEntity =
   let setClauses =
         foldMarshallerFields
           (tableMarshaller tableDef)
@@ -281,15 +369,17 @@ mkUpdateExpr tableDef key writeEntity =
         (tableName tableDef)
         (Expr.setClauseList setClauses)
         (Just (Expr.whereClause isEntityKey))
+        (mkReturningClause returningOption tableDef)
 
 {- |
   Builds an 'Expr.DeleteExpr' that will delete the entity with the given 'key'.
 -}
 mkDeleteExpr ::
+  ReturningOption ->
   TableDefinition (HasKey key) writeEntity readEntity ->
   key ->
   Expr.DeleteExpr
-mkDeleteExpr tableDef key =
+mkDeleteExpr returningOption tableDef key =
   let isEntityKey =
         primaryKeyEqualsExpr
           (tablePrimaryKey tableDef)
@@ -297,56 +387,20 @@ mkDeleteExpr tableDef key =
    in Expr.deleteExpr
         (tableName tableDef)
         (Just (Expr.whereClause isEntityKey))
+        (mkReturningClause returningOption tableDef)
 
 {- |
   An internal helper function that collects the 'Expr.SetClause's to
   update all the fields contained in a 'SqlMarshaller'
 -}
 collectSetClauses :: entity -> FieldFold entity [Expr.SetClause]
-collectSetClauses entity fieldDef accessor clauses =
-  let newClause =
-        Expr.setColumn
-          (fieldColumnName fieldDef)
-          (fieldValueToSqlValue fieldDef (accessor entity))
-   in newClause : clauses
-
-{- |
-  Builds a 'Expr.QueryExpr' that will do a select from the SQL table described
-  by the table definiton, selecting all the columns found in the table's
-  'SqlMarshaller'.
--}
-mkQueryExpr ::
-  TableDefinition key writeEntity readEntity ->
-  Expr.SelectClause ->
-  Maybe Expr.WhereClause ->
-  Maybe Expr.OrderByClause ->
-  Maybe Expr.GroupByClause ->
-  Maybe Expr.LimitExpr ->
-  Maybe Expr.OffsetExpr ->
-  Expr.QueryExpr
-mkQueryExpr tableDef selectClause whereClause orderByClause groupByClause limitExpr offsetExpr =
-  let columns =
-        marshallerColumnNames . tableMarshaller $ tableDef
-   in Expr.queryExpr
-        selectClause
-        (Expr.selectColumns columns)
-        (Just $ Expr.tableExpr (tableName tableDef) whereClause orderByClause groupByClause limitExpr offsetExpr)
-
-{- |
-  An internal helper function that collects the column names for all the
-  'FieldDefinition's that are referenced by the given 'SqlMarshaller'.
--}
-marshallerColumnNames :: SqlMarshaller writeEntity readEntity -> [Expr.ColumnName]
-marshallerColumnNames marshaller =
-  foldMarshallerFields marshaller [] (collectFromField fieldColumnName)
-
-{- |
-  An internal helper function that collects a value derived from a
-  'FieldDefinition' via the given function. The derived value is added to the
-  list of values being built.
--}
-collectFromField ::
-  (forall nullability a. FieldDefinition nullability a -> result) ->
-  FieldFold entity [result]
-collectFromField fromField fieldDef _ results =
-  fromField fieldDef : results
+collectSetClauses entity fieldDef maybeAccessor clauses =
+  case maybeAccessor of
+    Nothing ->
+      clauses
+    Just accessor ->
+      let newClause =
+            Expr.setColumn
+              (fieldColumnName fieldDef)
+              (fieldValueToSqlValue fieldDef (accessor entity))
+       in newClause : clauses

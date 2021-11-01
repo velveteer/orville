@@ -9,6 +9,7 @@ module Orville.PostgreSQL.Internal.FieldDefinition
   ( FieldDefinition,
     fieldName,
     fieldType,
+    fieldIsNotNull,
     fieldNullability,
     FieldNullability (..),
     fieldValueToSqlValue,
@@ -28,6 +29,7 @@ module Orville.PostgreSQL.Internal.FieldDefinition
     asymmetricNullableField,
     integerField,
     serialField,
+    smallIntegerField,
     bigIntegerField,
     bigSerialField,
     doubleField,
@@ -37,15 +39,15 @@ module Orville.PostgreSQL.Internal.FieldDefinition
     fixedTextField,
     textSearchVectorField,
     dateField,
-    timestampField,
-    timestampWithoutZoneField,
+    utcTimestampField,
+    localTimestampField,
     fieldOfType,
   )
 where
 
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Coerce as Coerce
-import Data.Int (Int32, Int64)
+import Data.Int (Int16, Int32, Int64)
 import qualified Data.Text as T
 import qualified Data.Time as Time
 
@@ -55,7 +57,7 @@ import qualified Orville.PostgreSQL.Internal.SqlValue as SqlValue
 
 newtype FieldName
   = FieldName B8.ByteString
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 fieldNameToColumnName :: FieldName -> Expr.ColumnName
 fieldNameToColumnName (FieldName name) =
@@ -111,7 +113,7 @@ data FieldNullability a
   | NotNullField (FieldDefinition NotNull a)
 
 {- | Resolves the 'nullablity' of a field to a concrete type, which is returned
- via the 'FieldNullability type. You can pattern match on this type to then
+ via the 'FieldNullability' type. You can pattern match on this type to then
  extract the either 'Nullable' or 'NotNull' not field for cases where you
  may require different logic based on the nullability of a field.
 -}
@@ -120,6 +122,15 @@ fieldNullability field =
   case _fieldNullability field of
     NullableGADT -> NullableField field
     NotNullGADT -> NotNullField field
+
+{- |
+  Indicates whether a field is nullable.
+-}
+fieldIsNotNull :: FieldDefinition nullability a -> Bool
+fieldIsNotNull field =
+  case _fieldNullability field of
+    NullableGADT -> False
+    NotNullGADT -> True
 
 {- |
   Mashalls a Haskell value to be stored in the field to its 'SqlValue'
@@ -209,6 +220,16 @@ integerField ::
 integerField = fieldOfType SqlType.integer
 
 {- |
+  Builds a 'FieldDefinition' that stores Haskell 'Int16' values as the
+  PostgreSQL "SMALLINT" type.
+-}
+smallIntegerField ::
+  -- | Name of the field in the database
+  String ->
+  FieldDefinition NotNull Int16
+smallIntegerField = fieldOfType SqlType.smallInteger
+
+{- |
   Builds a 'FieldDefinition' that stores an 'Int32' value as the "SERIAL"
   type. This can be used to create auto-incrementing columns.
 -}
@@ -282,7 +303,7 @@ boundedTextField ::
   -- | Name of the field in the database
   String ->
   -- | Maximum length of text in the field
-  Int ->
+  Int32 ->
   FieldDefinition NotNull T.Text
 boundedTextField name len = fieldOfType (SqlType.boundedText len) name
 
@@ -298,7 +319,7 @@ fixedTextField ::
   -- | Name of the field in the database
   String ->
   -- | Maximum length of text in the field
-  Int ->
+  Int32 ->
   FieldDefinition NotNull T.Text
 fixedTextField name len = fieldOfType (SqlType.fixedText len) name
 
@@ -323,21 +344,21 @@ dateField = fieldOfType SqlType.date
   Builds a 'FieldDefinition' that stores Haskell 'Time.UTCTime values as the
   PostgreSQL "TIMESTAMP with time zone" type.
 -}
-timestampField ::
+utcTimestampField ::
   -- | Name of the field in the database
   String ->
   FieldDefinition NotNull Time.UTCTime
-timestampField = fieldOfType SqlType.timestamp
+utcTimestampField = fieldOfType SqlType.timestamp
 
 {- |
   Builds a 'FieldDefinition' that stores Haskell 'Time.UTCTime values as the
   PostgreSQL "TIMESTAMP without time zone" type.
 -}
-timestampWithoutZoneField ::
+localTimestampField ::
   -- | Name of the field in the database
   String ->
-  FieldDefinition NotNull Time.UTCTime
-timestampWithoutZoneField = fieldOfType SqlType.timestampWithoutZone
+  FieldDefinition NotNull Time.LocalTime
+localTimestampField = fieldOfType SqlType.timestampWithoutZone
 
 {- |
   Builds a 'FieldDefinition' for will use the given 'SqlType' to determine

@@ -7,23 +7,28 @@ module Orville.PostgreSQL.AutoMigration
     executeMigrationSteps,
     SchemaItem,
     schemaTable,
+    schemaItemSummary,
+    MigrationStep,
     MigrationDataError,
   )
 where
 
-import Control.Exception (Exception, throwIO)
+import Control.Exception.Safe (Exception, throwIO)
+import Control.Monad (guard)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (traverse_)
-import Data.List.NonEmpty (NonEmpty ((:|)))
-import qualified Data.List.NonEmpty as NEL
+import qualified Data.List as List
+import Data.List.NonEmpty (NonEmpty ((:|)), nonEmpty)
 import qualified Data.Map.Strict as Map
+import qualified Data.Maybe as Maybe
 import qualified Data.Set as Set
 import qualified Data.String as String
 
 import qualified Orville.PostgreSQL as Orville
-import qualified Orville.PostgreSQL.InformationSchema as IS
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
+import qualified Orville.PostgreSQL.Internal.MigrationLock as MigrationLock
 import qualified Orville.PostgreSQL.Internal.RawSql as RawSql
+import qualified Orville.PostgreSQL.PgCatalog as PgCatalog
 
 {- |
   A 'SchemaItem' represents a single item in a database schema such as a table,
@@ -35,6 +40,19 @@ data SchemaItem where
   SchemaTable ::
     Orville.TableDefinition key writeEntity readEntity ->
     SchemaItem
+
+{- |
+  Retuns a one-line string describe the 'SchemaItem', suitable for a human to
+  identify it in a list of output.
+
+  For example, a 'SchemaItem' constructed via 'schemaTable' gives @Table <table
+  name>@.
+-}
+schemaItemSummary :: SchemaItem -> String
+schemaItemSummary item =
+  case item of
+    SchemaTable tableDef ->
+      "Table " <> Orville.tableIdToString (Orville.tableIdentifier tableDef)
 
 {- |
   Constructs a 'SchemaItem' from a 'Orville.TableDefinition'.
@@ -55,6 +73,40 @@ newtype MigrationStep
   deriving (RawSql.SqlExpression)
 
 {- |
+  This type is used internally by Orville to order the migration steps after
+  they have been created. It is not exposed outside this module.
+-}
+data MigrationStepWithType = MigrationStepWithType
+  { migrationStepType :: StepType
+  , migrationStep :: MigrationStep
+  }
+
+mkMigrationStepWithType ::
+  RawSql.SqlExpression sql =>
+  StepType ->
+  sql ->
+  MigrationStepWithType
+mkMigrationStepWithType stepType sql =
+  MigrationStepWithType
+    { migrationStepType = stepType
+    , migrationStep = MigrationStep (RawSql.toRawSql sql)
+    }
+
+{- |
+  Indicates the kind of operation being performed by a 'MigrationStep' so
+  that the steps can be ordered in a sequence that is guaranteed to succeed.
+  The order of the constructors below indicates the order in which steps will
+  be run.
+-}
+data StepType
+  = DropForeignKeys
+  | DropUniqueConstraints
+  | AddRemoveTablesAndColumns
+  | AddUniqueConstraints
+  | AddForeignKeys
+  deriving (Eq, Ord)
+
+{- |
   A 'MigrationDataError' will be thrown from the migration functions if data
   necessary for migration cannot be found.
 -}
@@ -65,13 +117,6 @@ data MigrationDataError
 instance Exception MigrationDataError
 
 {- |
-  An Map of tables discovered to exist in the database, keyed by schema and
-  table name for easy lookup for generation migration steps.
--}
-type TableIndex =
-  Map.Map (IS.SchemaName, IS.TableName) IS.InformationSchemaTable
-
-{- |
   This function compares the list of 'SchemaItem's provided against the current
   schema found in the database to determine whether any migration are
   necessary.  If any changes need to be made, this function executes. You can
@@ -80,8 +125,9 @@ type TableIndex =
 -}
 autoMigrateSchema :: Orville.MonadOrville m => [SchemaItem] -> m ()
 autoMigrateSchema schemaItems = do
-  steps <- generateMigrationSteps schemaItems
-  executeMigrationSteps steps
+  MigrationLock.withLockedTransaction $ do
+    steps <- generateMigrationStepsWithoutTransaction schemaItems
+    executeMigrationStepsWithoutTransaction steps
 
 {- |
   Compares the list of 'SchemaItem's provided against the current schema
@@ -92,16 +138,22 @@ autoMigrateSchema schemaItems = do
   or use the 'executeMigrationSteps' convenience function.
 -}
 generateMigrationSteps :: Orville.MonadOrville m => [SchemaItem] -> m [MigrationStep]
-generateMigrationSteps schemaItems = do
-  (currentSchema, currentCatalog) <- findCurrentSchema
+generateMigrationSteps =
+  MigrationLock.withLockedTransaction . generateMigrationStepsWithoutTransaction
 
-  let schemaNames = databaseSchemaNames currentSchema schemaItems
+generateMigrationStepsWithoutTransaction :: Orville.MonadOrville m => [SchemaItem] -> m [MigrationStep]
+generateMigrationStepsWithoutTransaction schemaItems = do
+  currentNamespace <- findCurrentNamespace
 
-  tableIndex <-
-    indexExistingTables <$> findTablesInSchemas currentCatalog schemaNames
+  let pgCatalogRelations = fmap (schemaItemPgCatalogRelation currentNamespace) schemaItems
 
-  pure $
-    concatMap (calculateMigrationSteps currentSchema tableIndex) schemaItems
+  dbDesc <- PgCatalog.describeDatabaseRelations pgCatalogRelations
+
+  pure
+    . map migrationStep
+    . List.sortOn migrationStepType
+    . concatMap (calculateMigrationSteps currentNamespace dbDesc)
+    $ schemaItems
 
 {- |
   A convenience function for executing a list of 'MigrationStep's that has
@@ -109,99 +161,410 @@ generateMigrationSteps schemaItems = do
 -}
 executeMigrationSteps :: Orville.MonadOrville m => [MigrationStep] -> m ()
 executeMigrationSteps =
+  MigrationLock.withLockedTransaction . executeMigrationStepsWithoutTransaction
+
+executeMigrationStepsWithoutTransaction :: Orville.MonadOrville m => [MigrationStep] -> m ()
+executeMigrationStepsWithoutTransaction =
   traverse_ Orville.executeVoid
 
 calculateMigrationSteps ::
-  IS.SchemaName ->
-  TableIndex ->
+  PgCatalog.NamespaceName ->
+  PgCatalog.DatabaseDescription ->
   SchemaItem ->
-  [MigrationStep]
-calculateMigrationSteps currentSchema tableIndex schemaItem =
+  [MigrationStepWithType]
+calculateMigrationSteps currentNamespace dbDesc schemaItem =
   case schemaItem of
     SchemaTable tableDef ->
       let schemaName =
-            tableDefinitionActualSchemaName currentSchema tableDef
+            tableDefinitionActualNamespaceName currentNamespace tableDef
 
           tableName =
-            String.fromString $ Orville.unqualifiedTableNameString tableDef
-       in case Map.lookup (schemaName, tableName) tableIndex of
+            String.fromString
+              . Orville.tableIdUnqualifiedNameString
+              . Orville.tableIdentifier
+              $ tableDef
+       in case PgCatalog.lookupRelation (schemaName, tableName) dbDesc of
             Nothing ->
-              [MigrationStep . RawSql.toRawSql . Orville.mkCreateTableExpr $ tableDef]
-            Just _ ->
-              []
+              mkCreateTableSteps currentNamespace tableDef
+            Just relationDesc ->
+              mkAlterTableSteps currentNamespace relationDesc tableDef
 
-indexExistingTables :: [IS.InformationSchemaTable] -> TableIndex
-indexExistingTables =
-  let tableEntry table =
-        ( (IS.tableSchema table, IS.tableName table)
-        , table
-        )
-   in Map.fromList . map tableEntry
+{- |
+  Builds 'MigrationStep's that will perform table creation. This function
+  assumes the table does not exist. The migration step it produces will fail if
+  the table already exists in its schema. Multiple steps may be required to
+  create the table if foreign keys exist to that reference other tables, which
+  may not have been created yet.
+-}
+mkCreateTableSteps ::
+  PgCatalog.NamespaceName ->
+  Orville.TableDefinition key writeEntity readEntity ->
+  [MigrationStepWithType]
+mkCreateTableSteps currentNamespace tableDef =
+  let tableName =
+        Orville.tableName tableDef
 
-databaseSchemaNames :: IS.SchemaName -> [SchemaItem] -> Set.Set IS.SchemaName
-databaseSchemaNames currentSchema =
-  Set.fromList . map (schemaItemSchemaName currentSchema)
+      -- constraints are not included in the create table expression because
+      -- they are added in a separate migration step to avoid ordering problems
+      -- when creating multiple tables with interrelated foreign keys.
+      createTableExpr =
+        Expr.createTableExpr
+          tableName
+          (Orville.mkTableColumnDefinitions tableDef)
+          (Orville.mkTablePrimaryKeyExpr tableDef)
+          []
 
-schemaItemSchemaName :: IS.SchemaName -> SchemaItem -> IS.SchemaName
-schemaItemSchemaName currentSchema item =
+      addConstraintActions =
+        concatMap
+          (mkAddConstraintActions currentNamespace Set.empty)
+          (Orville.tableConstraints tableDef)
+   in mkMigrationStepWithType AddRemoveTablesAndColumns createTableExpr :
+      mkConstraintSteps tableName addConstraintActions
+
+{- |
+  Builds migration steps that are required to create or alter the table's
+  schema to make it match the given table definition.
+
+  This function uses the given relation description to determine what
+  alterations need to be performed. If there is nothing to do, an empty list
+  will be returned.
+-}
+mkAlterTableSteps ::
+  PgCatalog.NamespaceName ->
+  PgCatalog.RelationDescription ->
+  Orville.TableDefinition key writeEntity readEntity ->
+  [MigrationStepWithType]
+mkAlterTableSteps currentNamespace relationDesc tableDef =
+  let addAlterColumnActions =
+        concat $
+          Orville.foldMarshallerFields
+            (Orville.tableMarshaller tableDef)
+            []
+            (Orville.collectFromField Orville.IncludeReadOnlyColumns (mkAddAlterColumnActions relationDesc))
+
+      dropColumnActions =
+        concatMap
+          (mkDropColumnActions tableDef)
+          (PgCatalog.relationAttributes relationDesc)
+
+      existingConstraints =
+        Set.fromList
+          . Maybe.mapMaybe pgConstraintMigrationKey
+          . PgCatalog.relationConstraints
+          $ relationDesc
+
+      constraintsToKeep =
+        Set.map (setDefaultSchemaNameOnConstraintKey currentNamespace)
+          . Map.keysSet
+          . Orville.tableConstraints
+          $ tableDef
+
+      addConstraintActions =
+        concatMap
+          (mkAddConstraintActions currentNamespace existingConstraints)
+          (Orville.tableConstraints tableDef)
+
+      dropConstraintActions =
+        concatMap
+          (mkDropConstraintActions constraintsToKeep)
+          (PgCatalog.relationConstraints relationDesc)
+
+      tableName =
+        Orville.tableName tableDef
+   in mkAlterColumnSteps tableName (addAlterColumnActions <> dropColumnActions)
+        <> mkConstraintSteps tableName (addConstraintActions <> dropConstraintActions)
+
+{- |
+  Consolidates alter table actions (which should all be related to adding and
+  dropping constraints) into migration steps based on their 'StepType'. Actions
+  with the same 'StepType' will be performed togethir in a single @ALTER TABLE@
+  statement.
+-}
+mkConstraintSteps ::
+  Expr.QualifiedTableName ->
+  [(StepType, Expr.AlterTableAction)] ->
+  [MigrationStepWithType]
+mkConstraintSteps tableName actions =
+  let mkMapEntry ::
+        (StepType, Expr.AlterTableAction) ->
+        (StepType, NonEmpty Expr.AlterTableAction)
+      mkMapEntry (keyType, action) =
+        (keyType, (action :| []))
+
+      addStep stepType actionExprs steps =
+        mkMigrationStepWithType stepType (Expr.alterTableExpr tableName actionExprs) : steps
+   in Map.foldrWithKey addStep []
+        . Map.fromListWith (<>)
+        . map mkMapEntry
+        $ actions
+
+{- |
+  If there are any alter table actions for adding or removing columns, creates a migration
+  step to perform them. Otherwise returns an empty list.
+-}
+mkAlterColumnSteps ::
+  Expr.QualifiedTableName ->
+  [Expr.AlterTableAction] ->
+  [MigrationStepWithType]
+mkAlterColumnSteps tableName actionExprs =
+  case nonEmpty actionExprs of
+    Nothing ->
+      []
+    Just nonEmptyActionExprs ->
+      [mkMigrationStepWithType AddRemoveTablesAndColumns (Expr.alterTableExpr tableName nonEmptyActionExprs)]
+
+{- |
+  Builds 'Expr.AlterTableAction' expressions to bring the database schema in
+  line with the given 'Orville.FieldDefinition', or none if no change is
+  required.
+-}
+mkAddAlterColumnActions ::
+  PgCatalog.RelationDescription ->
+  Orville.FieldDefinition nullability a ->
+  [Expr.AlterTableAction]
+mkAddAlterColumnActions relationDesc fieldDef =
+  let pgAttributeName =
+        String.fromString (Orville.fieldNameToString $ Orville.fieldName fieldDef)
+   in case PgCatalog.lookupAttribute pgAttributeName relationDesc of
+        Just attr
+          | PgCatalog.isOrdinaryColumn attr ->
+            let sqlType =
+                  Orville.fieldType fieldDef
+
+                typeIsChanged =
+                  (Orville.sqlTypeOid sqlType /= PgCatalog.pgAttributeTypeOid attr)
+                    || (Orville.sqlTypeMaximumLength sqlType /= PgCatalog.pgAttributeMaxLength attr)
+
+                columnName =
+                  Orville.fieldColumnName fieldDef
+
+                dataType =
+                  Orville.sqlTypeExpr sqlType
+
+                alterType = do
+                  guard typeIsChanged
+                  [Expr.alterColumnType columnName dataType (Just $ Expr.usingCast columnName dataType)]
+
+                nullabilityIsChanged =
+                  Orville.fieldIsNotNull fieldDef /= PgCatalog.pgAttributeIsNotNull attr
+
+                nullabilityAction =
+                  if Orville.fieldIsNotNull fieldDef
+                    then Expr.setNotNull
+                    else Expr.dropNotNull
+
+                alterNullability = do
+                  guard nullabilityIsChanged
+                  [Expr.alterColumnNullability (Orville.fieldColumnName fieldDef) nullabilityAction]
+             in alterType <> alterNullability
+        _ ->
+          -- Either the column doesn't exist in the table _OR_ it's a system
+          -- column. If it's a system column, attempting to add it will result
+          -- in an error that will be reported to the user. We could explicitly
+          -- return an error from this function, but that would make the error
+          -- reporting inconsistent with the handling in create table, where we
+          -- must rely on the database to raise the error because the table
+          -- does not yet exist for us to discover a conflict with system
+          -- attributes.
+          [Expr.addColumn (Orville.fieldColumnDefinition fieldDef)]
+
+{- |
+  Builds 'Expr.AlterTableAction' expressions for the given attribute to make
+  the database schema match the given 'Orville.TableDefinition'. This function
+  is only responsible for handling cases where the attribute does not have a
+  correspending 'Orville.FieldDefinition'. See 'mkFieldActions' for those
+  cases.
+-}
+mkDropColumnActions ::
+  Orville.TableDefinition key readEntity writeEntity ->
+  PgCatalog.PgAttribute ->
+  [Expr.AlterTableAction]
+mkDropColumnActions tableDef attr = do
+  let attrName =
+        PgCatalog.attributeNameToString $ PgCatalog.pgAttributeName attr
+
+  guard $ Set.member attrName (Orville.columnsToDrop tableDef)
+
+  [Expr.dropColumn $ Expr.columnName attrName]
+
+{- |
+  Sets the schema name on a constraint to the given namespace when the
+  constraint has no namespace explicitly given. This is important for Orville
+  to discover whether a constraint from a table definition matches a constraint
+  found to already exist in the database because constraints in the database
+  always have schema names included with them.
+-}
+setDefaultSchemaNameOnConstraintKey ::
+  PgCatalog.NamespaceName ->
+  Orville.ConstraintMigrationKey ->
+  Orville.ConstraintMigrationKey
+setDefaultSchemaNameOnConstraintKey currentNamespace constraintKey =
+  case Orville.constraintKeyForeignTable constraintKey of
+    Nothing ->
+      constraintKey
+    Just foreignTable ->
+      case Orville.tableIdSchemaNameString foreignTable of
+        Nothing ->
+          constraintKey
+            { Orville.constraintKeyForeignTable =
+                Just $
+                  Orville.setTableIdSchema
+                    (PgCatalog.namespaceNameToString currentNamespace)
+                    foreignTable
+            }
+        Just _ ->
+          constraintKey
+
+{- |
+  Builds 'Expr.AlterTableAction' expressions to create the given table
+  constraint if it does not exist.
+-}
+mkAddConstraintActions ::
+  PgCatalog.NamespaceName ->
+  Set.Set Orville.ConstraintMigrationKey ->
+  Orville.ConstraintDefinition ->
+  [(StepType, Expr.AlterTableAction)]
+mkAddConstraintActions currentNamespace existingConstraints constraintDef =
+  let constraintKey =
+        setDefaultSchemaNameOnConstraintKey currentNamespace $
+          Orville.constraintMigrationKey constraintDef
+
+      stepType =
+        case Orville.constraintKeyType constraintKey of
+          Orville.UniqueConstraint -> AddUniqueConstraints
+          Orville.ForeignKeyConstraint -> AddForeignKeys
+   in if Set.member constraintKey existingConstraints
+        then []
+        else [(stepType, Expr.addConstraint (Orville.constraintSqlExpr constraintDef))]
+
+{- |
+  Builds 'Expr.AlterTableAction' expressions to drop the given table
+  constraint if it should not exist.
+-}
+mkDropConstraintActions ::
+  Set.Set Orville.ConstraintMigrationKey ->
+  PgCatalog.ConstraintDescription ->
+  [(StepType, Expr.AlterTableAction)]
+mkDropConstraintActions constraintsToKeep constraint =
+  case pgConstraintMigrationKey constraint of
+    Nothing ->
+      []
+    Just constraintKey ->
+      if Set.member constraintKey constraintsToKeep
+        then []
+        else
+          let constraintName =
+                Expr.constraintName
+                  . PgCatalog.constraintNameToString
+                  . PgCatalog.pgConstraintName
+                  . PgCatalog.constraintRecord
+                  $ constraint
+
+              stepType =
+                case Orville.constraintKeyType constraintKey of
+                  Orville.UniqueConstraint -> DropUniqueConstraints
+                  Orville.ForeignKeyConstraint -> DropForeignKeys
+           in [(stepType, Expr.dropConstraint constraintName)]
+
+{- |
+  Builds the orville migration key for a description of an existing constraint
+  so that it can be compared with constraints found in a table definition.
+  Constraint keys built this way always have a schema name populated, so it's
+  important to set the schema names for the constraints found in the table
+  definition before comparing them. See 'setDefaultSchemaNameOnConstraintKey'.
+
+  If the descriptionis for a kind of constraint that Orville does not support,
+  'Nothing' is returned.
+-}
+pgConstraintMigrationKey ::
+  PgCatalog.ConstraintDescription ->
+  Maybe Orville.ConstraintMigrationKey
+pgConstraintMigrationKey constraintDesc =
+  let toOrvilleConstraintKeyType pgConType =
+        case pgConType of
+          PgCatalog.UniqueConstraint -> Just Orville.UniqueConstraint
+          PgCatalog.ForeignKeyConstraint -> Just Orville.ForeignKeyConstraint
+          _ -> Nothing
+
+      constraint =
+        PgCatalog.constraintRecord constraintDesc
+
+      pgAttributeNamesToFieldNames =
+        map (Orville.stringToFieldName . PgCatalog.attributeNameToString . PgCatalog.pgAttributeName)
+
+      foreignRelationTableId :: PgCatalog.ForeignRelationDescription -> Orville.TableIdentifier
+      foreignRelationTableId foreignRelationDesc =
+        let relationName =
+              PgCatalog.relationNameToString
+                . PgCatalog.pgClassRelationName
+                . PgCatalog.foreignRelationClass
+                $ foreignRelationDesc
+
+            namespaceName =
+              PgCatalog.namespaceNameToString
+                . PgCatalog.pgNamespaceName
+                . PgCatalog.foreignRelationNamespace
+                $ foreignRelationDesc
+         in Orville.setTableIdSchema namespaceName $
+              Orville.unqualifiedNameToTableId relationName
+   in do
+        keyType <- toOrvilleConstraintKeyType (PgCatalog.pgConstraintType constraint)
+        pure $
+          Orville.ConstraintMigrationKey
+            { Orville.constraintKeyType = keyType
+            , Orville.constraintKeyColumns =
+                fmap
+                  pgAttributeNamesToFieldNames
+                  (PgCatalog.constraintKey constraintDesc)
+            , Orville.constraintKeyForeignTable =
+                fmap foreignRelationTableId (PgCatalog.constraintForeignRelation constraintDesc)
+            , Orville.constraintKeyForeignColumns =
+                fmap
+                  pgAttributeNamesToFieldNames
+                  (PgCatalog.constraintForeignKey constraintDesc)
+            }
+
+schemaItemPgCatalogRelation ::
+  PgCatalog.NamespaceName ->
+  SchemaItem ->
+  (PgCatalog.NamespaceName, PgCatalog.RelationName)
+schemaItemPgCatalogRelation currentNamespace item =
   case item of
     SchemaTable tableDef ->
-      tableDefinitionActualSchemaName currentSchema tableDef
+      ( tableDefinitionActualNamespaceName currentNamespace tableDef
+      , String.fromString . Orville.tableIdUnqualifiedNameString . Orville.tableIdentifier $ tableDef
+      )
 
-tableDefinitionActualSchemaName ::
-  IS.SchemaName ->
+tableDefinitionActualNamespaceName ::
+  PgCatalog.NamespaceName ->
   Orville.TableDefinition key writeEntity readEntity ->
-  IS.SchemaName
-tableDefinitionActualSchemaName currentSchema tableDef =
-  maybe currentSchema String.fromString (Orville.tableSchemaNameString tableDef)
+  PgCatalog.NamespaceName
+tableDefinitionActualNamespaceName currentNamespace =
+  maybe currentNamespace String.fromString
+    . Orville.tableIdSchemaNameString
+    . Orville.tableIdentifier
 
-currentSchemaQuery :: Expr.QueryExpr
-currentSchemaQuery =
+currentNamespaceQuery :: Expr.QueryExpr
+currentNamespaceQuery =
   Expr.queryExpr
     (Expr.selectClause (Expr.selectExpr Nothing))
     ( Expr.selectDerivedColumns
-        [ Expr.deriveColumn (unquotedFieldName currentSchemaField)
-        , -- Without an an explicit "AS" here, postgresql returns a column name of
-          -- "current_database" rather than "current_catalog"
-          Expr.deriveColumnAs
-            (unquotedFieldName currentCatalogField)
-            (Orville.fieldColumnName currentCatalogField)
+        [ Expr.deriveColumnAs
+            -- current_schema is a special reserved word in postgresql. If you
+            -- put it in quotes it tries to treat it as a regular column name,
+            -- which then can't be found as a column in the query.
+            (Expr.columnNameFromIdentifier (Expr.unquotedIdentifier "current_schema"))
+            (Orville.fieldColumnName PgCatalog.namespaceNameField)
         ]
     )
     Nothing
 
-{- |
-  current_schema and current_catalog are special words -- if you put them in
-  quotes PostgreSQL treats them as a normal column name. These column don't
-  exist in our query above, so it would fail. We use this function to include
-  them in the SQL unquoted.
--}
-unquotedFieldName :: Orville.FieldDefinition nullability a -> Expr.ColumnName
-unquotedFieldName =
-  Expr.columnNameFromIdentifier
-    . Expr.unquotedIdentifierFromBytes
-    . Orville.fieldNameToByteString
-    . Orville.fieldName
-
-currentCatalogField :: Orville.FieldDefinition Orville.NotNull IS.CatalogName
-currentCatalogField =
-  Orville.coerceField
-    (Orville.unboundedTextField "current_catalog")
-
-currentSchemaField :: Orville.FieldDefinition Orville.NotNull IS.SchemaName
-currentSchemaField =
-  Orville.coerceField
-    (Orville.unboundedTextField "current_schema")
-
-findCurrentSchema :: Orville.MonadOrville m => m (IS.SchemaName, IS.CatalogName)
-findCurrentSchema = do
+findCurrentNamespace :: Orville.MonadOrville m => m PgCatalog.NamespaceName
+findCurrentNamespace = do
   results <-
     Orville.executeAndDecode
-      currentSchemaQuery
-      ( (,)
-          <$> Orville.marshallField fst currentSchemaField
-          <*> Orville.marshallField snd currentCatalogField
-      )
+      currentNamespaceQuery
+      (Orville.marshallField id PgCatalog.namespaceNameField)
 
   liftIO $
     case results of
@@ -211,23 +574,3 @@ findCurrentSchema = do
         throwIO $ UnableToDiscoverCurrentSchema "No results returned by current_schema query"
       _ ->
         throwIO $ UnableToDiscoverCurrentSchema "Multiple results returned by current_schema query"
-
-findTablesInSchemas ::
-  Orville.MonadOrville m =>
-  IS.CatalogName ->
-  Set.Set IS.SchemaName ->
-  m [IS.InformationSchemaTable]
-findTablesInSchemas currentCatalog schemaNameSet =
-  case NEL.nonEmpty (Set.toList schemaNameSet) of
-    Nothing ->
-      pure []
-    Just nonEmptySchemaNames ->
-      Orville.findEntitiesBy
-        IS.informationSchemaTablesTable
-        ( Orville.where_
-            ( Orville.whereAnd
-                ( Orville.fieldEquals IS.tableCatalogField currentCatalog
-                    :| [Orville.whereIn IS.tableSchemaField nonEmptySchemaNames]
-                )
-            )
-        )

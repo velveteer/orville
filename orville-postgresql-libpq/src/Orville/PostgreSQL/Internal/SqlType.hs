@@ -8,9 +8,8 @@ module Orville.PostgreSQL.Internal.SqlType
       ( SqlType,
         sqlTypeExpr,
         sqlTypeReferenceExpr,
-        sqlTypeNullable,
-        sqlTypeId,
-        sqlTypeSqlSize,
+        sqlTypeOid,
+        sqlTypeMaximumLength,
         sqlTypeToSql,
         sqlTypeFromSql
       ),
@@ -19,6 +18,7 @@ module Orville.PostgreSQL.Internal.SqlType
     serial,
     bigInteger,
     bigSerial,
+    smallInteger,
     double,
     -- textual-ish types
     boolean,
@@ -30,6 +30,8 @@ module Orville.PostgreSQL.Internal.SqlType
     date,
     timestamp,
     timestampWithoutZone,
+    -- postgresql types
+    oid,
     -- type conversions
     foreignRefType,
     convertSqlType,
@@ -37,10 +39,11 @@ module Orville.PostgreSQL.Internal.SqlType
   )
 where
 
-import Data.Int (Int32, Int64)
+import Data.Int (Int16, Int32, Int64)
 import Data.Text (Text)
 import qualified Data.Time as Time
 import qualified Database.PostgreSQL.LibPQ as LibPQ
+import qualified Foreign.C.Types as CTypes
 
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
 import Orville.PostgreSQL.Internal.SqlValue (SqlValue)
@@ -60,12 +63,13 @@ data SqlType a = SqlType
     -- with foreign keys to this type. This is used foreignRefType to build a
     -- new SqlType when making foreign key fields
     sqlTypeReferenceExpr :: Maybe Expr.DataType
-  , -- | Indicates whether columns should be marked NULL or NOT NULL in the
-    -- database schema. If this is 'True', then 'sqlTypeFromSql' should
-    -- provide a handling of 'SqlNull' that returns an 'a', not 'Nothing'.
-    sqlTypeNullable :: Bool
-  , sqlTypeId :: LibPQ.Oid
-  , sqlTypeSqlSize :: Maybe Int
+  , -- | The Oid for the type in postgresql. This will be used during
+    -- migrations to determine whether the column type needs to be altered.
+    sqlTypeOid :: LibPQ.Oid
+  , -- | The maximum length for lengths that take a type parameter (such as
+    -- @char@ and @varchar@).  This will be used during migration to determine
+    -- whether the column type needs to be altered.
+    sqlTypeMaximumLength :: Maybe Int32
   , -- | A function for converting Haskell values of this type into values to
     -- be stored in the database.
     sqlTypeToSql :: a -> SqlValue
@@ -84,9 +88,8 @@ integer =
   SqlType
     { sqlTypeExpr = Expr.int
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 23
-    , sqlTypeSqlSize = Just 4
+    , sqlTypeOid = LibPQ.Oid 23
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromInt32
     , sqlTypeFromSql = SqlValue.toInt32
     }
@@ -100,9 +103,8 @@ serial =
   SqlType
     { sqlTypeExpr = Expr.serial
     , sqlTypeReferenceExpr = Just Expr.int
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 23
-    , sqlTypeSqlSize = Just 4
+    , sqlTypeOid = LibPQ.Oid 23
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromInt32
     , sqlTypeFromSql = SqlValue.toInt32
     }
@@ -116,9 +118,8 @@ bigInteger =
   SqlType
     { sqlTypeExpr = Expr.bigInt
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 20
-    , sqlTypeSqlSize = Just 8
+    , sqlTypeOid = LibPQ.Oid 20
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromInt64
     , sqlTypeFromSql = SqlValue.toInt64
     }
@@ -132,11 +133,24 @@ bigSerial =
   SqlType
     { sqlTypeExpr = Expr.bigSerial
     , sqlTypeReferenceExpr = Just Expr.bigInt
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 20
-    , sqlTypeSqlSize = Just 8
+    , sqlTypeOid = LibPQ.Oid 20
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromInt64
     , sqlTypeFromSql = SqlValue.toInt64
+    }
+
+{- |
+  'smallInteger' defines a 16-bit integer type. This corresponds to the "SMALLINT" type in SQL.
+-}
+smallInteger :: SqlType Int16
+smallInteger =
+  SqlType
+    { sqlTypeExpr = Expr.smallint
+    , sqlTypeReferenceExpr = Nothing
+    , sqlTypeOid = LibPQ.Oid 21
+    , sqlTypeMaximumLength = Nothing
+    , sqlTypeToSql = SqlValue.fromInt16
+    , sqlTypeFromSql = SqlValue.toInt16
     }
 
 {- |
@@ -148,9 +162,8 @@ double =
   SqlType
     { sqlTypeExpr = Expr.doublePrecision
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 701
-    , sqlTypeSqlSize = Just 8
+    , sqlTypeOid = LibPQ.Oid 701
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromDouble
     , sqlTypeFromSql = SqlValue.toDouble
     }
@@ -164,9 +177,8 @@ boolean =
   SqlType
     { sqlTypeExpr = Expr.boolean
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 16
-    , sqlTypeSqlSize = Just 1
+    , sqlTypeOid = LibPQ.Oid 16
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromBool
     , sqlTypeFromSql = SqlValue.toBool
     }
@@ -180,9 +192,8 @@ unboundedText =
   SqlType
     { sqlTypeExpr = Expr.text
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 25
-    , sqlTypeSqlSize = Nothing
+    , sqlTypeOid = LibPQ.Oid 25
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromText
     , sqlTypeFromSql = SqlValue.toText
     }
@@ -191,14 +202,13 @@ unboundedText =
   'fixedText' defines a fixed length text field type. This corresponds to a
   "CHAR(len)" type in PostgreSQL.
 -}
-fixedText :: Int -> SqlType Text
+fixedText :: Int32 -> SqlType Text
 fixedText len =
   SqlType
     { sqlTypeExpr = Expr.char len
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 1042
-    , sqlTypeSqlSize = Just len
+    , sqlTypeOid = LibPQ.Oid 1042
+    , sqlTypeMaximumLength = Just len
     , sqlTypeToSql = SqlValue.fromText
     , sqlTypeFromSql = SqlValue.toText
     }
@@ -207,14 +217,13 @@ fixedText len =
   'boundedText' defines a variable length text field type. This corresponds to a
   "VARCHAR(len)" type in PostgreSQL.
 -}
-boundedText :: Int -> SqlType Text
+boundedText :: Int32 -> SqlType Text
 boundedText len =
   SqlType
     { sqlTypeExpr = Expr.varchar len
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 1043
-    , sqlTypeSqlSize = Just len
+    , sqlTypeOid = LibPQ.Oid 1043
+    , sqlTypeMaximumLength = Just len
     , sqlTypeToSql = SqlValue.fromText
     , sqlTypeFromSql = SqlValue.toText
     }
@@ -228,9 +237,8 @@ textSearchVector =
   SqlType
     { sqlTypeExpr = Expr.tsvector
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 3614
-    , sqlTypeSqlSize = Nothing
+    , sqlTypeOid = LibPQ.Oid 3614
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromText
     , sqlTypeFromSql = SqlValue.toText
     }
@@ -244,9 +252,8 @@ date =
   SqlType
     { sqlTypeExpr = Expr.date
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 1082
-    , sqlTypeSqlSize = Just 4
+    , sqlTypeOid = LibPQ.Oid 1082
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromDay
     , sqlTypeFromSql = SqlValue.toDay
     }
@@ -266,11 +273,10 @@ timestamp =
   SqlType
     { sqlTypeExpr = Expr.timestampWithZone
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 1184
-    , sqlTypeSqlSize = Just 8
+    , sqlTypeOid = LibPQ.Oid 1184
+    , sqlTypeMaximumLength = Nothing
     , sqlTypeToSql = SqlValue.fromUTCTime
-    , sqlTypeFromSql = SqlValue.toUTCTimeWithZone
+    , sqlTypeFromSql = SqlValue.toUTCTime
     }
 
 {- |
@@ -279,16 +285,30 @@ timestamp =
 
   http://blog.untrod.com/2016/08/actually-understanding-timezones-in-postgresql.html
 -}
-timestampWithoutZone :: SqlType Time.UTCTime
+timestampWithoutZone :: SqlType Time.LocalTime
 timestampWithoutZone =
   SqlType
     { sqlTypeExpr = Expr.timestampWithoutZone
     , sqlTypeReferenceExpr = Nothing
-    , sqlTypeNullable = False
-    , sqlTypeId = LibPQ.Oid 1114
-    , sqlTypeSqlSize = Just 8
-    , sqlTypeToSql = SqlValue.fromUTCTime
-    , sqlTypeFromSql = SqlValue.toUTCTimeWithoutZone
+    , sqlTypeOid = LibPQ.Oid 1114
+    , sqlTypeMaximumLength = Nothing
+    , sqlTypeToSql = SqlValue.fromLocalTime
+    , sqlTypeFromSql = SqlValue.toLocalTime
+    }
+
+{- |
+  'oid' corresponds to the type used in PostgreSQL for identifying system
+  objects
+-}
+oid :: SqlType LibPQ.Oid
+oid =
+  SqlType
+    { sqlTypeExpr = Expr.oid
+    , sqlTypeReferenceExpr = Nothing
+    , sqlTypeOid = LibPQ.Oid 26
+    , sqlTypeMaximumLength = Nothing
+    , sqlTypeToSql = \(LibPQ.Oid (CTypes.CUInt word)) -> SqlValue.fromWord32 word
+    , sqlTypeFromSql = fmap (LibPQ.Oid . CTypes.CUInt) . SqlValue.toWord32
     }
 
 {- |

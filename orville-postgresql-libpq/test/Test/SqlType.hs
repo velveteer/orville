@@ -21,23 +21,22 @@ import qualified Orville.PostgreSQL.Internal.SqlValue as SqlValue
 
 import qualified Test.Property as Property
 
-sqlTypeTests :: Pool.Pool Connection.Connection -> IO Bool
+sqlTypeTests :: Pool.Pool Connection.Connection -> Property.Group
 sqlTypeTests pool =
-  HH.checkSequential $
-    HH.Group
-      (String.fromString "SqlType decoding tests")
-      $ integerTests pool
-        <> bigIntegerTests pool
-        <> serialTests pool
-        <> bigSerialTests pool
-        <> doubleTests pool
-        <> boolTests pool
-        <> unboundedTextTests pool
-        <> fixedTextTests pool
-        <> boundedTextTests pool
-        <> textSearchVectorTests pool
-        <> dateTests pool
-        <> timestampTests pool
+  Property.group "SqlType" $
+    integerTests pool
+      <> smallIntegerTests pool
+      <> bigIntegerTests pool
+      <> serialTests pool
+      <> bigSerialTests pool
+      <> doubleTests pool
+      <> boolTests pool
+      <> unboundedTextTests pool
+      <> fixedTextTests pool
+      <> boundedTextTests pool
+      <> textSearchVectorTests pool
+      <> dateTests pool
+      <> timestampTests pool
 
 integerTests :: Pool.Pool Connection.Connection -> [(HH.PropertyName, HH.Property)]
 integerTests pool =
@@ -69,6 +68,40 @@ integerTests pool =
           , rawSqlValue = Just $ B8.pack $ show (-2147483648 :: Int)
           , sqlType = SqlType.integer
           , expectedValue = -2147483648
+          }
+    )
+  ]
+
+smallIntegerTests :: Pool.Pool Connection.Connection -> [(HH.PropertyName, HH.Property)]
+smallIntegerTests pool =
+  [
+    ( String.fromString "Testing the decode of SMALLINT with value 0"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "SMALLINT"
+          , rawSqlValue = Just $ B8.pack $ show (0 :: Int)
+          , sqlType = SqlType.smallInteger
+          , expectedValue = 0
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of SMALLINT with value 32767"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "SMALLINT"
+          , rawSqlValue = Just $ B8.pack $ show (32767 :: Int)
+          , sqlType = SqlType.smallInteger
+          , expectedValue = 32767
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of SMALLINT with value -32768"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "SMALLINT"
+          , rawSqlValue = Just $ B8.pack $ show (-32768 :: Int)
+          , sqlType = SqlType.smallInteger
+          , expectedValue = -32768
           }
     )
   ]
@@ -342,7 +375,7 @@ timestampTests pool =
           { sqlTypeDDL = "TIMESTAMP WITHOUT TIME ZONE"
           , rawSqlValue = Just $ B8.pack "'2020-12-21 00:00:32'"
           , sqlType = SqlType.timestampWithoutZone
-          , expectedValue = Time.UTCTime (Time.fromGregorian 2020 12 21) (Time.secondsToDiffTime 32)
+          , expectedValue = Time.LocalTime (Time.fromGregorian 2020 12 21) (Time.timeToTimeOfDay $ Time.secondsToDiffTime 32)
           }
     )
   ,
@@ -352,7 +385,7 @@ timestampTests pool =
           { sqlTypeDDL = "TIMESTAMP WITHOUT TIME ZONE"
           , rawSqlValue = Just $ B8.pack "'2020-12-21 00:00:32.000'"
           , sqlType = SqlType.timestampWithoutZone
-          , expectedValue = Time.UTCTime (Time.fromGregorian 2020 12 21) (Time.secondsToDiffTime 32)
+          , expectedValue = Time.LocalTime (Time.fromGregorian 2020 12 21) (Time.timeToTimeOfDay $ Time.secondsToDiffTime 32)
           }
     )
   ]
@@ -377,6 +410,7 @@ runDecodingTest pool test =
           tableName
           Nothing
           (Expr.insertSqlValues [[SqlValue.fromRawBytesNullable (rawSqlValue test)]])
+          Nothing
 
       result <-
         MIO.liftIO . RawSql.execute connection $

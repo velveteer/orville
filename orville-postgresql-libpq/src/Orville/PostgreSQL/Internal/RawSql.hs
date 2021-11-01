@@ -24,6 +24,7 @@ module Orville.PostgreSQL.Internal.RawSql
     rightParen,
     dot,
     doubleQuote,
+    doubleColon,
 
     -- * Generic interface for generating sql
     SqlExpression (toRawSql, unsafeFromRawSql),
@@ -37,6 +38,7 @@ import qualified Data.ByteString.Builder as BSB
 import qualified Data.ByteString.Lazy as LBS
 import Data.DList (DList)
 import qualified Data.DList as DList
+import qualified Data.Foldable as Fold
 import qualified Data.List as List
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 
@@ -190,9 +192,12 @@ parameter =
   Concatenates a list of 'RawSql' values using another 'RawSql' value as
   the a separator between the items.
 -}
-intercalate :: RawSql -> [RawSql] -> RawSql
-intercalate separator parts =
-  mconcat (List.intersperse separator parts)
+intercalate :: (SqlExpression sql, Foldable f) => RawSql -> f sql -> RawSql
+intercalate separator =
+  mconcat
+    . List.intersperse separator
+    . map toRawSql
+    . Fold.toList
 
 {- |
   Executes a 'RawSql' value using the 'Conn.executeRaw' function. Make sure
@@ -240,6 +245,10 @@ rightParen = fromString ")"
 dot :: RawSql
 dot = fromString "."
 
--- | Just a plain double quoqte, provided for convenience
+-- | Just a plain double quote, provided for convenience
 doubleQuote :: RawSql
 doubleQuote = fromString "\""
+
+-- | Just two colons, provided for convenience
+doubleColon :: RawSql
+doubleColon = fromString "::"

@@ -8,12 +8,14 @@ module Orville.PostgreSQL.Internal.SelectOptions.WhereCondition
     fieldLessThan,
     fieldGreaterThanOrEqualTo,
     fieldLessThanOrEqualTo,
+    fieldIn,
+    fieldNotIn,
+    fieldTupleIn,
+    fieldTupleNotIn,
     whereAnd,
     whereOr,
     whereBooleanExpr,
     whereConditionToBooleanExpr,
-    whereIn,
-    whereNotIn,
   )
 where
 
@@ -34,10 +36,9 @@ newtype WhereCondition
   deriving (RawSql.SqlExpression)
 
 {- |
-  Constructs a 'WhereCondition' from a 'Expr.BooleanExpr'. You can use this
-  to together with the 'RawSql.RawSql' related functions in the 'Expr' module
-  to use SQL expressions Orville does not have direct support for in your
-  queries.
+  Constructs a 'WhereCondition' from a 'Expr.BooleanExpr'. You can use this to
+  together with the 'RawSql.RawSql' related functions in the 'Expr' module to
+  use SQL expressions that Orville does not directly support in your queries.
 -}
 whereBooleanExpr :: Expr.BooleanExpr -> WhereCondition
 whereBooleanExpr =
@@ -95,6 +96,66 @@ fieldLessThanOrEqualTo =
   whereColumnComparison Expr.columnLessThanOrEqualTo
 
 {- |
+  Checks that a field matches a list of values
+-}
+fieldIn :: FieldDef.FieldDefinition nullability a -> NonEmpty a -> WhereCondition
+fieldIn fieldDef values =
+  WhereCondition $
+    Expr.columnIn
+      (FieldDef.fieldColumnName fieldDef)
+      (fmap (FieldDef.fieldValueToSqlValue fieldDef) values)
+
+{- |
+  Checks that a field does not match a list of values
+-}
+fieldNotIn :: FieldDef.FieldDefinition nullability a -> NonEmpty a -> WhereCondition
+fieldNotIn fieldDef values =
+  WhereCondition $
+    Expr.columnNotIn
+      (FieldDef.fieldColumnName fieldDef)
+      (fmap (FieldDef.fieldValueToSqlValue fieldDef) values)
+
+{- |
+  Checks that a tuple of two fields is in the list of specified tuplies
+-}
+fieldTupleIn ::
+  FieldDef.FieldDefinition nullabilityA a ->
+  FieldDef.FieldDefinition nullabilityB b ->
+  NonEmpty (a, b) ->
+  WhereCondition
+fieldTupleIn fieldDefA fieldDefB values =
+  WhereCondition $
+    Expr.columnTupleIn
+      (FieldDef.fieldColumnName fieldDefA :| [FieldDef.fieldColumnName fieldDefB])
+      (fmap (toSqlValueTuple fieldDefA fieldDefB) values)
+
+{- |
+  Checks that a tuple of two fields is not in the list of specified tuplies
+-}
+fieldTupleNotIn ::
+  FieldDef.FieldDefinition nullabilityA a ->
+  FieldDef.FieldDefinition nullabilityB b ->
+  NonEmpty (a, b) ->
+  WhereCondition
+fieldTupleNotIn fieldDefA fieldDefB values =
+  WhereCondition $
+    Expr.columnTupleNotIn
+      (FieldDef.fieldColumnName fieldDefA :| [FieldDef.fieldColumnName fieldDefB])
+      (fmap (toSqlValueTuple fieldDefA fieldDefB) values)
+
+{- |
+  Constructs a SqlValue "tuple" (i.e. NonEmpty list) for two fields
+-}
+toSqlValueTuple ::
+  FieldDef.FieldDefinition nullabilityA a ->
+  FieldDef.FieldDefinition nullabilityB b ->
+  (a, b) ->
+  NonEmpty SqlValue.SqlValue
+toSqlValueTuple fieldDefA fieldDefB (a, b) =
+  FieldDef.fieldValueToSqlValue fieldDefA a
+    :| [FieldDef.fieldValueToSqlValue fieldDefB b]
+
+{- |
   INTERNAL: Constructs a field-based 'WhereCondition' using a function that
   builds a 'Expr.BooleanExpr'
 -}
@@ -120,26 +181,6 @@ whereAnd =
 whereOr :: NonEmpty WhereCondition -> WhereCondition
 whereOr =
   foldParenthenizedExprs Expr.orExpr
-
-{- |
-  Checks that a field matches a list of values
--}
-whereIn :: FieldDef.FieldDefinition nullability a -> NonEmpty a -> WhereCondition
-whereIn fieldDef values =
-  WhereCondition $
-    Expr.columnIn
-      (FieldDef.fieldColumnName fieldDef)
-      (fmap (FieldDef.fieldValueToSqlValue fieldDef) values)
-
-{- |
-  Checks that a field does not match a list of values
--}
-whereNotIn :: FieldDef.FieldDefinition nullability a -> NonEmpty a -> WhereCondition
-whereNotIn fieldDef values =
-  WhereCondition $
-    Expr.columnNotIn
-      (FieldDef.fieldColumnName fieldDef)
-      (fmap (FieldDef.fieldValueToSqlValue fieldDef) values)
 
 {- |
   INTERNAL: Combines a (non-empty) list of 'WhereCondition's together using
