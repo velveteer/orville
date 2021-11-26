@@ -18,6 +18,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe (listToMaybe)
 
+import qualified Orville.PostgreSQL.Internal.Delete as Delete
 import qualified Orville.PostgreSQL.Internal.Execute as Execute
 import qualified Orville.PostgreSQL.Internal.Insert as Insert
 import qualified Orville.PostgreSQL.Internal.MonadOrville as MonadOrville
@@ -126,9 +127,8 @@ deleteEntity ::
   TableDef.TableDefinition (TableDef.HasKey key) writeEntity readEntity ->
   key ->
   m ()
-deleteEntity tableDef key =
-  Execute.executeVoid $
-    TableDef.mkDeleteExpr TableDef.WithoutReturning tableDef key
+deleteEntity tableDef =
+  Delete.executeDelete . Delete.deleteToTable tableDef
 
 {- |
   Deletes the row with the given key, returning the row that was deleted.
@@ -139,11 +139,8 @@ deleteAndReturnEntity ::
   TableDef.TableDefinition (TableDef.HasKey key) writeEntity readEntity ->
   key ->
   m (Maybe readEntity)
-deleteAndReturnEntity tableDef key =
-  fmap listToMaybe $
-    Execute.executeAndDecode
-      (TableDef.mkDeleteExpr TableDef.WithReturning tableDef key)
-      (TableDef.tableMarshaller tableDef)
+deleteAndReturnEntity tableDef =
+  Delete.executeDeleteReturnEntity . Delete.deleteToTableReturning tableDef
 
 {- |
   Finds all the entities in the given table according to the specified
