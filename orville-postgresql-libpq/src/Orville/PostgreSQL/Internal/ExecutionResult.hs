@@ -51,6 +51,7 @@ class ExecutionResult result where
   maxRowNumber :: result -> IO (Maybe Row)
   maxColumnNumber :: result -> IO (Maybe Column)
   columnName :: result -> Column -> IO (Maybe BS.ByteString)
+  tableOid :: result -> Column -> IO LibPQ.Oid
   getValue :: result -> Row -> Column -> IO SqlValue
 
 instance ExecutionResult LibPQ.Result where
@@ -70,6 +71,9 @@ instance ExecutionResult LibPQ.Result where
 
   columnName result =
     LibPQ.fname result . LibPQ.toColumn . fromEnum
+
+  tableOid result =
+    LibPQ.ftable result . LibPQ.toColumn . fromEnum
 
   getValue result (Row row) (Column column) =
     SqlValue.fromRawBytesNullable
@@ -129,6 +133,8 @@ instance ExecutionResult FakeLibPQResult where
   maxRowNumber = pure . fakeLibPQMaxRow
   maxColumnNumber = pure . fakeLibPQMaxColumn
   columnName result = pure . fakeLibPQColumnName result
+  -- TODO: add fakeLibPQTableOid
+  tableOid result = undefined
   getValue result column = pure . fakeLibPQGetValue result column
 
 fakeLibPQColumnName :: FakeLibPQResult -> Column -> (Maybe BS.ByteString)

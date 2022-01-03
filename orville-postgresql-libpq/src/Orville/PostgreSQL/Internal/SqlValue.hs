@@ -67,6 +67,7 @@ import qualified Orville.PostgreSQL.Internal.PgTime as PgTime
 data SqlValue
   = SqlValue PgTextFormatValue
   | SqlNull
+  deriving (Eq)
 
 {- |
   Checks whether the 'SqlValue' represents a sql NULL value in the database.

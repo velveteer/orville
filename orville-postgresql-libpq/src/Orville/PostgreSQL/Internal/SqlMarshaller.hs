@@ -42,6 +42,8 @@ import Orville.PostgreSQL.Internal.ExecutionResult (Column (Column), ExecutionRe
 import qualified Orville.PostgreSQL.Internal.ExecutionResult as Result
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
 import Orville.PostgreSQL.Internal.FieldDefinition (FieldDefinition, FieldNullability (NotNullField, NullableField), asymmetricNullableField, fieldColumnName, fieldName, fieldNameToByteString, fieldNameToColumnName, fieldNullability, fieldValueFromSqlValue, nullableField)
+import Database.PostgreSQL.LibPQ (Oid)
+import qualified Orville.PostgreSQL.Internal.PgTextFormatValue as PGTFV
 import qualified Orville.PostgreSQL.Internal.SqlValue as SqlValue
 import Orville.PostgreSQL.Internal.SyntheticField (SyntheticField, nullableSyntheticField, syntheticFieldAlias, syntheticFieldExpression, syntheticFieldValueFromSqlValue)
 
@@ -204,6 +206,7 @@ data MarshallError
     FailedToDecodeValue
   | -- | Indicates that an expected column was not found in the result set
     FieldNotFoundInResultSet
+  | TestFailedToDecodeValue (Maybe B8.ByteString) Oid SqlValue.SqlValue
   deriving (Eq)
 
 -- NOTE: We want to be sure that the 'Show' instance of Marshall error does
@@ -214,6 +217,12 @@ instance Show MarshallError where
     case err of
       FailedToDecodeValue -> "FailedToDecodeValue"
       FieldNotFoundInResultSet -> "FieldNotFoundInResultSet"
+      -- TODO: This is a proof of concept and still needs polish
+      -- TestFailedToDecodeValue will be renamed and could replace `FailedToDecodeValue` or perhaps be an optional toggle/moved out of Show
+      TestFailedToDecodeValue mbColumn tableOid sqlValue ->
+        "TestFailedToDecodeValue " <> maybe "NULL" ((\x -> "'" <> x <> "'") . B8.unpack . PGTFV.toByteString) (SqlValue.toPGValue sqlValue)
+        <> " from column '" <> maybe "No column found" B8.unpack mbColumn
+        <> "' from table '" <> show tableOid <> "'."
 
 instance Exception MarshallError
 
@@ -452,8 +461,10 @@ mkColumnRowSource fromSqlValue result column =
     case fromSqlValue sqlValue of
       Just value ->
         pure (Right value)
-      Nothing ->
-        pure (Left FailedToDecodeValue)
+      Nothing -> do
+        columnName <- Result.columnName result column
+        tableOid <- Result.tableOid result column
+        pure (Left $ TestFailedToDecodeValue columnName tableOid sqlValue)
 
 {- |
   Builds a 'SqlMarshaller' that maps a single field of a Haskell entity to
