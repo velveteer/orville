@@ -496,6 +496,7 @@ mkRowSource marshaller result = do
             mkSource m
 
   pure . mkSource $ marshaller
+{-# INLINE mkRowSource #-}
 
 partialRowSource ::
   ExecutionResult result =>
