@@ -341,6 +341,7 @@ marshallResultFromSqlUsingRowIdExtractor errorDetailLevel rowIdExtractor marshal
 
 traverseSequence :: (a -> IO (Either err b)) -> [a] -> IO (Either err [b])
 traverseSequence f = getCompose . traverse (Compose . f)
+{-# INLINE traverseSequence #-}
 
 {- |
   Attempts to decode a result set row that has already been fetched from the
