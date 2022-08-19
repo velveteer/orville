@@ -40,6 +40,7 @@ module Orville.PostgreSQL.Internal.SqlMarshaller
   )
 where
 
+import Data.Functor.Compose (Compose(Compose, getCompose))
 import Control.Applicative (liftA2)
 import Control.Monad (join)
 import qualified Data.ByteString.Char8 as B8
@@ -339,25 +340,7 @@ marshallResultFromSqlUsingRowIdExtractor errorDetailLevel rowIdExtractor marshal
       traverseSequence (decodeRow errorDetailLevel rowSource rowIdExtractor) [Row 0 .. maxRow]
 
 traverseSequence :: (a -> IO (Either err b)) -> [a] -> IO (Either err [b])
-traverseSequence f =
-  go
-  where
-    go as =
-      case as of
-        [] ->
-          pure (Right [])
-        a : rest -> do
-          eitherB <- f a
-          case eitherB of
-            Left err ->
-              pure (Left err)
-            Right b -> do
-              eitherBS <- go rest
-              case eitherBS of
-                Left err ->
-                  pure (Left err)
-                Right bs ->
-                  pure (Right (b : bs))
+traverseSequence f = getCompose . traverse (Compose . f)
 
 {- |
   Attempts to decode a result set row that has already been fetched from the
