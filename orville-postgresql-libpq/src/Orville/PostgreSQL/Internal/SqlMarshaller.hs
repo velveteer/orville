@@ -40,6 +40,7 @@ module Orville.PostgreSQL.Internal.SqlMarshaller
   )
 where
 
+import Control.Applicative (liftA2)
 import Control.Monad (join)
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Map.Strict as Map
@@ -427,16 +428,8 @@ constRowSource =
   value decode from the result set.
 -}
 applyRowSource :: RowSource (a -> b) -> RowSource a -> RowSource b
-applyRowSource (RowSource decodeAtoB) (RowSource decodeA) =
-  RowSource $ \row -> do
-    eitherAToB <- decodeAtoB row
-
-    case eitherAToB of
-      Left err ->
-        pure (Left err)
-      Right aToB -> do
-        eitherA <- decodeA row
-        pure (fmap aToB eitherA)
+applyRowSource (RowSource decodeAtoB) (RowSource decodeA) = RowSource $ (liftA2 . liftA2 . liftA2) ($) decodeAtoB decodeA
+{-# INLINE applyRowSource #-}
 
 {- |
   Creates a 'RowSource' that will always fail to decode by returning the
