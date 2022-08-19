@@ -385,6 +385,7 @@ decodeRow errorDetailLevel (RowSource source) (RowIdentityExtractor getRowId) ro
     Right entity ->
       pure $
         Right entity
+{-# INLINE decodeRow #-}
 
 {- |
   A 'RowSource' can fetch and decode rows from a database result set. Using
