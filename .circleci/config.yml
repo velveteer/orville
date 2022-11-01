@@ -1,8 +1,11 @@
----
+--
 version: 2.1
 jobs:
 
   ghc901:
+    parameters:
+      pg-version:
+        type: string
     machine:
       image: ubuntu-2004:202101-01
     steps:
