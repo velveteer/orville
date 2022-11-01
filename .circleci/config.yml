@@ -2,6 +2,23 @@
 version: 2.1
 jobs:
 
+  test:
+    parameters:
+      pg-version:
+        type: string
+      stack-yaml:
+        type: string
+    machine:
+      image: ubuntu-2004:202101-01
+    steps:
+      - checkout
+      - run:
+          name: make sure dockerfile is built
+          command: cd orville-postgresql-libpq && docker-compose build -q
+      - run:
+          name: run tests against << parameters.stack-yaml >>
+          command: cd orville-postgresql-libpq && PG_VERSION=<< parameters.pg-version >> docker-compose run --rm dev stack --stack-yaml << parameters.stack-yaml >> test --ghc-options=-j --flag orville-postgresql-libpq:ci
+
   ghc901:
     parameters:
       pg-version:
@@ -30,7 +47,7 @@ jobs:
           command: cd orville-postgresql-libpq && docker-compose build -q
       - run:
           name: run tests against ghc8.10.7 (stackage lts-18.9)
-          command: cd orville-postgresql-libpq && PG_VERSION=<< parameters.pg-version >> docker-compose run --rm dev stack --stack-yaml stack-lts-18.9.yml test --ghc-options=-j --flag orville-postgresql-libpq:ci
+          command: cd orville-postgresql-libpq && PG_VERSION=<< parameters.pg-version >> docker-compose run --rm dev stack --stack-yaml stack.yml test --ghc-options=-j --flag orville-postgresql-libpq:ci
 
   ghc8106:
     parameters:
@@ -120,6 +137,12 @@ workflows:
   version: 2.0
   test:
     jobs:
+      - test:
+          matrix:
+            parameters:
+              pg-version: ["pg11", "pg12", "pg13", "pg14", "pg15"]
+              stack-yaml: ["stack.yml", "stack-lts-18.7.yml", "stack-lts-17.3.yml", "stack-lts-17.0.yml", "stack-lts-16.12.yml"]
+
       - ghc884:
           matrix:
             parameters:
