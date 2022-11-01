@@ -15,7 +15,7 @@ jobs:
           command: cd orville-postgresql-libpq && docker-compose build -q
       - run:
           name: run tests against ghc9.0.1 (stackage nightly-2021-10-24)
-          command: cd orville-postgresql-libpq && << parameters.pg-version >> docker-compose run --rm dev stack --stack-yaml stack-nightly-2021-10-24.yml test --ghc-options=-j --flag orville-postgresql-libpq:ci
+          command: cd orville-postgresql-libpq && PG_VERSION=<< parameters.pg-version >> docker-compose run --rm dev stack --stack-yaml stack-nightly-2021-10-24.yml test --ghc-options=-j --flag orville-postgresql-libpq:ci
 
 
   postgresql-11-17-and-ghc901:
