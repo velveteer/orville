@@ -123,31 +123,31 @@ workflows:
       - ghc884:
           matrix:
             parameters:
-              pg-version: ["pg11," "pg12", "pg13", "pg14", "pg15"]
+              pg-version: ["pg11", "pg12", "pg13", "pg14", "pg15"]
 
       - ghc8103:
           matrix:
             parameters:
-              pg-version: ["pg11," "pg12", "pg13", "pg14", "pg15"]
+              pg-version: ["pg11", "pg12", "pg13", "pg14", "pg15"]
 
       - ghc8104:
           matrix:
             parameters:
-              pg-version: ["pg11," "pg12", "pg13", "pg14", "pg15"]
+              pg-version: ["pg11", "pg12", "pg13", "pg14", "pg15"]
 
       - ghc8106:
           matrix:
             parameters:
-              pg-version: ["pg11," "pg12", "pg13", "pg14", "pg15"]
+              pg-version: ["pg11", "pg12", "pg13", "pg14", "pg15"]
 
       - ghc8107:
           matrix:
             parameters:
-              pg-version: ["pg11," "pg12", "pg13", "pg14", "pg15"]
+              pg-version: ["pg11", "pg12", "pg13", "pg14", "pg15"]
 
       - ghc901:
           matrix:
             parameters:
-              pg-version: ["pg11," "pg12", "pg13", "pg14", "pg15"]
+              pg-version: ["pg11", "pg12", "pg13", "pg14", "pg15"]
 
       - formatting-check
