@@ -1,0 +1,530 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Expr.Where.BooleanExpr
+Copyright : Flipstone Technology Partners 2016-2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier">BooleanExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#orExpr"><span class="hs-identifier">orExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#andExpr"><span class="hs-identifier">andExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#parenthesized"><span class="hs-identifier">parenthesized</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnEquals"><span class="hs-identifier">columnEquals</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnNotEquals"><span class="hs-identifier">columnNotEquals</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnGreaterThan"><span class="hs-identifier">columnGreaterThan</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLessThan"><span class="hs-identifier">columnLessThan</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnGreaterThanOrEqualTo"><span class="hs-identifier">columnGreaterThanOrEqualTo</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLessThanOrEqualTo"><span class="hs-identifier">columnLessThanOrEqualTo</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLike"><span class="hs-identifier">columnLike</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-20"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLikeInsensitive"><span class="hs-identifier">columnLikeInsensitive</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIsNull"><span class="hs-identifier">columnIsNull</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIsNotNull"><span class="hs-identifier">columnIsNotNull</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-23"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier">comparison</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-24"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIn"><span class="hs-identifier">columnIn</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-25"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnNotIn"><span class="hs-identifier">columnNotIn</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-26"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnTupleIn"><span class="hs-identifier">columnTupleIn</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-27"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnTupleNotIn"><span class="hs-identifier">columnTupleNotIn</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-28"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#InValuePredicate"><span class="hs-identifier">InValuePredicate</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-29"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inPredicate"><span class="hs-identifier">inPredicate</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-30"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#notInPredicate"><span class="hs-identifier">notInPredicate</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-31"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inValueList"><span class="hs-identifier">inValueList</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-32"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">NE</span></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Name</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier">ColumnName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.ValueExpression</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#ValueExpression"><span class="hs-identifier">ValueExpression</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier">columnReference</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#rowValueConstructor"><span class="hs-identifier">rowValueConstructor</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier">valueExpression</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier">ComparisonOperator</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#equalsOp"><span class="hs-identifier">equalsOp</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOp"><span class="hs-identifier">greaterThanOp</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOrEqualsOp"><span class="hs-identifier">greaterThanOrEqualsOp</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#iLikeOp"><span class="hs-identifier">iLikeOp</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOp"><span class="hs-identifier">lessThanOp</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOrEqualsOp"><span class="hs-identifier">lessThanOrEqualsOp</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#likeOp"><span class="hs-identifier">likeOp</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#notEqualsOp"><span class="hs-identifier">notEqualsOp</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.SqlValue</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier">SqlValue</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">newtype</span><span> </span><span id="BooleanExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span></span><span>
+</span><span id="line-43"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="BooleanExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-44"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116234"><span id="local-6989586621679116236"><span class="annot"><span class="annottext">RawSql -&gt; BooleanExpr
+BooleanExpr -&gt; RawSql
+(BooleanExpr -&gt; RawSql)
+-&gt; (RawSql -&gt; BooleanExpr) -&gt; SqlExpression BooleanExpr
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; BooleanExpr
+$cunsafeFromRawSql :: RawSql -&gt; BooleanExpr
+toRawSql :: BooleanExpr -&gt; RawSql
+$ctoRawSql :: BooleanExpr -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#orExpr"><span class="hs-identifier hs-type">orExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-47"></span><span id="orExpr"><span class="annot"><span class="annottext">orExpr :: BooleanExpr -&gt; BooleanExpr -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#orExpr"><span class="hs-identifier hs-var hs-var">orExpr</span></a></span></span><span> </span><span id="local-6989586621679116232"><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116232"><span class="hs-identifier hs-var">left</span></a></span></span><span> </span><span id="local-6989586621679116231"><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116231"><span class="hs-identifier hs-var">right</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-48"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; BooleanExpr) -&gt; RawSql -&gt; BooleanExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-49"></span><span>    </span><span class="annot"><span class="annottext">BooleanExpr -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116232"><span class="hs-identifier hs-var">left</span></a></span><span>
+</span><span id="line-50"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; OR &quot;</span></span><span>
+</span><span id="line-51"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">BooleanExpr -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116231"><span class="hs-identifier hs-var">right</span></a></span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#andExpr"><span class="hs-identifier hs-type">andExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-54"></span><span id="andExpr"><span class="annot"><span class="annottext">andExpr :: BooleanExpr -&gt; BooleanExpr -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#andExpr"><span class="hs-identifier hs-var hs-var">andExpr</span></a></span></span><span> </span><span id="local-6989586621679116228"><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116228"><span class="hs-identifier hs-var">left</span></a></span></span><span> </span><span id="local-6989586621679116227"><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116227"><span class="hs-identifier hs-var">right</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-55"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; BooleanExpr) -&gt; RawSql -&gt; BooleanExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-56"></span><span>    </span><span class="annot"><span class="annottext">BooleanExpr -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116228"><span class="hs-identifier hs-var">left</span></a></span><span>
+</span><span id="line-57"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; AND &quot;</span></span><span>
+</span><span id="line-58"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">BooleanExpr -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116227"><span class="hs-identifier hs-var">right</span></a></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIn"><span class="hs-identifier hs-type">columnIn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NE.NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-61"></span><span id="columnIn"><span class="annot"><span class="annottext">columnIn :: ColumnName -&gt; NonEmpty SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIn"><span class="hs-identifier hs-var hs-var">columnIn</span></a></span></span><span> </span><span id="local-6989586621679116226"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116226"><span class="hs-identifier hs-var">columnName</span></a></span></span><span> </span><span id="local-6989586621679116225"><span class="annot"><span class="annottext">NonEmpty SqlValue
+</span><a href="#local-6989586621679116225"><span class="hs-identifier hs-var">values</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-62"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression -&gt; InValuePredicate -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inPredicate"><span class="hs-identifier hs-var">inPredicate</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116226"><span class="hs-identifier hs-var">columnName</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NonEmpty ValueExpression -&gt; InValuePredicate
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inValueList"><span class="hs-identifier hs-var">inValueList</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty ValueExpression -&gt; InValuePredicate)
+-&gt; NonEmpty ValueExpression -&gt; InValuePredicate
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(SqlValue -&gt; ValueExpression)
+-&gt; NonEmpty SqlValue -&gt; NonEmpty ValueExpression
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty SqlValue
+</span><a href="#local-6989586621679116225"><span class="hs-identifier hs-var">values</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnNotIn"><span class="hs-identifier hs-type">columnNotIn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NE.NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-65"></span><span id="columnNotIn"><span class="annot"><span class="annottext">columnNotIn :: ColumnName -&gt; NonEmpty SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnNotIn"><span class="hs-identifier hs-var hs-var">columnNotIn</span></a></span></span><span> </span><span id="local-6989586621679116224"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116224"><span class="hs-identifier hs-var">columnName</span></a></span></span><span> </span><span id="local-6989586621679116223"><span class="annot"><span class="annottext">NonEmpty SqlValue
+</span><a href="#local-6989586621679116223"><span class="hs-identifier hs-var">values</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-66"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression -&gt; InValuePredicate -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#notInPredicate"><span class="hs-identifier hs-var">notInPredicate</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116224"><span class="hs-identifier hs-var">columnName</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NonEmpty ValueExpression -&gt; InValuePredicate
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inValueList"><span class="hs-identifier hs-var">inValueList</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty ValueExpression -&gt; InValuePredicate)
+-&gt; NonEmpty ValueExpression -&gt; InValuePredicate
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(SqlValue -&gt; ValueExpression)
+-&gt; NonEmpty SqlValue -&gt; NonEmpty ValueExpression
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty SqlValue
+</span><a href="#local-6989586621679116223"><span class="hs-identifier hs-var">values</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-comment">{- |
+  Checks that the tuple constructed from the given columns in one of the tuples
+  specified in the input list. It is up to the caller to ensure that all the
+  tuples given have the same arity.
+-}</span><span>
+</span><span id="line-73"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnTupleIn"><span class="hs-identifier hs-type">columnTupleIn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NE.NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NE.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">NE.NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-74"></span><span id="columnTupleIn"><span class="annot"><span class="annottext">columnTupleIn :: NonEmpty ColumnName -&gt; NonEmpty (NonEmpty SqlValue) -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnTupleIn"><span class="hs-identifier hs-var hs-var">columnTupleIn</span></a></span></span><span> </span><span id="local-6989586621679116222"><span class="annot"><span class="annottext">NonEmpty ColumnName
+</span><a href="#local-6989586621679116222"><span class="hs-identifier hs-var">columnNames</span></a></span></span><span> </span><span id="local-6989586621679116221"><span class="annot"><span class="annottext">NonEmpty (NonEmpty SqlValue)
+</span><a href="#local-6989586621679116221"><span class="hs-identifier hs-var">valueLists</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-75"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression -&gt; InValuePredicate -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inPredicate"><span class="hs-identifier hs-var">inPredicate</span></a></span><span>
+</span><span id="line-76"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NonEmpty ValueExpression -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#rowValueConstructor"><span class="hs-identifier hs-var">rowValueConstructor</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty ValueExpression -&gt; ValueExpression)
+-&gt; NonEmpty ValueExpression -&gt; ValueExpression
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(ColumnName -&gt; ValueExpression)
+-&gt; NonEmpty ColumnName -&gt; NonEmpty ValueExpression
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty ColumnName
+</span><a href="#local-6989586621679116222"><span class="hs-identifier hs-var">columnNames</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NonEmpty ValueExpression -&gt; InValuePredicate
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inValueList"><span class="hs-identifier hs-var">inValueList</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty ValueExpression -&gt; InValuePredicate)
+-&gt; NonEmpty ValueExpression -&gt; InValuePredicate
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(NonEmpty SqlValue -&gt; ValueExpression)
+-&gt; NonEmpty (NonEmpty SqlValue) -&gt; NonEmpty ValueExpression
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NonEmpty ValueExpression -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#rowValueConstructor"><span class="hs-identifier hs-var">rowValueConstructor</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty ValueExpression -&gt; ValueExpression)
+-&gt; (NonEmpty SqlValue -&gt; NonEmpty ValueExpression)
+-&gt; NonEmpty SqlValue
+-&gt; ValueExpression
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(SqlValue -&gt; ValueExpression)
+-&gt; NonEmpty SqlValue -&gt; NonEmpty ValueExpression
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NonEmpty (NonEmpty SqlValue)
+</span><a href="#local-6989586621679116221"><span class="hs-identifier hs-var">valueLists</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="hs-comment">{- |
+  Checks that the tuple constructed from the given columns is NOT one of the
+  tuples specified in the input list. It is up to the caller to ensure that all
+  the tuples given have the same arity.
+-}</span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnTupleNotIn"><span class="hs-identifier hs-type">columnTupleNotIn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NE.NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NE.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">NE.NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-85"></span><span id="columnTupleNotIn"><span class="annot"><span class="annottext">columnTupleNotIn :: NonEmpty ColumnName -&gt; NonEmpty (NonEmpty SqlValue) -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnTupleNotIn"><span class="hs-identifier hs-var hs-var">columnTupleNotIn</span></a></span></span><span> </span><span id="local-6989586621679116219"><span class="annot"><span class="annottext">NonEmpty ColumnName
+</span><a href="#local-6989586621679116219"><span class="hs-identifier hs-var">columnNames</span></a></span></span><span> </span><span id="local-6989586621679116218"><span class="annot"><span class="annottext">NonEmpty (NonEmpty SqlValue)
+</span><a href="#local-6989586621679116218"><span class="hs-identifier hs-var">valueLists</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-86"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression -&gt; InValuePredicate -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#notInPredicate"><span class="hs-identifier hs-var">notInPredicate</span></a></span><span>
+</span><span id="line-87"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NonEmpty ValueExpression -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#rowValueConstructor"><span class="hs-identifier hs-var">rowValueConstructor</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty ValueExpression -&gt; ValueExpression)
+-&gt; NonEmpty ValueExpression -&gt; ValueExpression
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(ColumnName -&gt; ValueExpression)
+-&gt; NonEmpty ColumnName -&gt; NonEmpty ValueExpression
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty ColumnName
+</span><a href="#local-6989586621679116219"><span class="hs-identifier hs-var">columnNames</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NonEmpty ValueExpression -&gt; InValuePredicate
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inValueList"><span class="hs-identifier hs-var">inValueList</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty ValueExpression -&gt; InValuePredicate)
+-&gt; NonEmpty ValueExpression -&gt; InValuePredicate
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(NonEmpty SqlValue -&gt; ValueExpression)
+-&gt; NonEmpty (NonEmpty SqlValue) -&gt; NonEmpty ValueExpression
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NonEmpty ValueExpression -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#rowValueConstructor"><span class="hs-identifier hs-var">rowValueConstructor</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty ValueExpression -&gt; ValueExpression)
+-&gt; (NonEmpty SqlValue -&gt; NonEmpty ValueExpression)
+-&gt; NonEmpty SqlValue
+-&gt; ValueExpression
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(SqlValue -&gt; ValueExpression)
+-&gt; NonEmpty SqlValue -&gt; NonEmpty ValueExpression
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NonEmpty (NonEmpty SqlValue)
+</span><a href="#local-6989586621679116218"><span class="hs-identifier hs-var">valueLists</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inPredicate"><span class="hs-identifier hs-type">inPredicate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#ValueExpression"><span class="hs-identifier hs-type">ValueExpression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#InValuePredicate"><span class="hs-identifier hs-type">InValuePredicate</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-91"></span><span id="inPredicate"><span class="annot"><span class="annottext">inPredicate :: ValueExpression -&gt; InValuePredicate -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inPredicate"><span class="hs-identifier hs-var hs-var">inPredicate</span></a></span></span><span> </span><span id="local-6989586621679116217"><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116217"><span class="hs-identifier hs-var">predicand</span></a></span></span><span> </span><span id="local-6989586621679116216"><span class="annot"><span class="annottext">InValuePredicate
+</span><a href="#local-6989586621679116216"><span class="hs-identifier hs-var">predicate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-92"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; BooleanExpr) -&gt; RawSql -&gt; BooleanExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-93"></span><span>    </span><span class="annot"><span class="annottext">ValueExpression -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116217"><span class="hs-identifier hs-var">predicand</span></a></span><span>
+</span><span id="line-94"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; IN &quot;</span></span><span>
+</span><span id="line-95"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">InValuePredicate -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">InValuePredicate
+</span><a href="#local-6989586621679116216"><span class="hs-identifier hs-var">predicate</span></a></span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#notInPredicate"><span class="hs-identifier hs-type">notInPredicate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#ValueExpression"><span class="hs-identifier hs-type">ValueExpression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#InValuePredicate"><span class="hs-identifier hs-type">InValuePredicate</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-98"></span><span id="notInPredicate"><span class="annot"><span class="annottext">notInPredicate :: ValueExpression -&gt; InValuePredicate -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#notInPredicate"><span class="hs-identifier hs-var hs-var">notInPredicate</span></a></span></span><span> </span><span id="local-6989586621679116215"><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116215"><span class="hs-identifier hs-var">predicand</span></a></span></span><span> </span><span id="local-6989586621679116214"><span class="annot"><span class="annottext">InValuePredicate
+</span><a href="#local-6989586621679116214"><span class="hs-identifier hs-var">predicate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-99"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; BooleanExpr) -&gt; RawSql -&gt; BooleanExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-100"></span><span>    </span><span class="annot"><span class="annottext">ValueExpression -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116215"><span class="hs-identifier hs-var">predicand</span></a></span><span>
+</span><span id="line-101"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; NOT IN &quot;</span></span><span>
+</span><span id="line-102"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">InValuePredicate -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">InValuePredicate
+</span><a href="#local-6989586621679116214"><span class="hs-identifier hs-var">predicate</span></a></span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span class="hs-keyword">newtype</span><span> </span><span id="InValuePredicate"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#InValuePredicate"><span class="hs-identifier hs-var">InValuePredicate</span></a></span></span><span>
+</span><span id="line-105"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="InValuePredicate"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#InValuePredicate"><span class="hs-identifier hs-var">InValuePredicate</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-106"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116209"><span id="local-6989586621679116211"><span class="annot"><span class="annottext">RawSql -&gt; InValuePredicate
+InValuePredicate -&gt; RawSql
+(InValuePredicate -&gt; RawSql)
+-&gt; (RawSql -&gt; InValuePredicate) -&gt; SqlExpression InValuePredicate
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; InValuePredicate
+$cunsafeFromRawSql :: RawSql -&gt; InValuePredicate
+toRawSql :: InValuePredicate -&gt; RawSql
+$ctoRawSql :: InValuePredicate -&gt; RawSql
+</span><a href="#local-6989586621679116209"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-107"></span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inValueList"><span class="hs-identifier hs-type">inValueList</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NE.NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#ValueExpression"><span class="hs-identifier hs-type">ValueExpression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#InValuePredicate"><span class="hs-identifier hs-type">InValuePredicate</span></a></span><span>
+</span><span id="line-109"></span><span id="inValueList"><span class="annot"><span class="annottext">inValueList :: NonEmpty ValueExpression -&gt; InValuePredicate
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#inValueList"><span class="hs-identifier hs-var hs-var">inValueList</span></a></span></span><span> </span><span id="local-6989586621679116208"><span class="annot"><span class="annottext">NonEmpty ValueExpression
+</span><a href="#local-6989586621679116208"><span class="hs-identifier hs-var">values</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-110"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; InValuePredicate
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#InValuePredicate"><span class="hs-identifier hs-var">InValuePredicate</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; InValuePredicate) -&gt; RawSql -&gt; InValuePredicate
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-111"></span><span>    </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#leftParen"><span class="hs-identifier hs-var">RawSql.leftParen</span></a></span><span>
+</span><span id="line-112"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; NonEmpty ValueExpression -&gt; RawSql
+forall sql (f :: * -&gt; *).
+(SqlExpression sql, Foldable f) =&gt;
+RawSql -&gt; f sql -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#intercalate"><span class="hs-identifier hs-var">RawSql.intercalate</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#commaSpace"><span class="hs-identifier hs-var">RawSql.commaSpace</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty ValueExpression
+</span><a href="#local-6989586621679116208"><span class="hs-identifier hs-var">values</span></a></span><span>
+</span><span id="line-113"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#rightParen"><span class="hs-identifier hs-var">RawSql.rightParen</span></a></span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#parenthesized"><span class="hs-identifier hs-type">parenthesized</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-116"></span><span id="parenthesized"><span class="annot"><span class="annottext">parenthesized :: BooleanExpr -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#parenthesized"><span class="hs-identifier hs-var hs-var">parenthesized</span></a></span></span><span> </span><span id="local-6989586621679116203"><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116203"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-117"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; BooleanExpr) -&gt; RawSql -&gt; BooleanExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-118"></span><span>    </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#leftParen"><span class="hs-identifier hs-var">RawSql.leftParen</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">BooleanExpr -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679116203"><span class="hs-identifier hs-var">expr</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#rightParen"><span class="hs-identifier hs-var">RawSql.rightParen</span></a></span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-type">comparison</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-121"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#ValueExpression"><span class="hs-identifier hs-type">ValueExpression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-122"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-type">ComparisonOperator</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-123"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#ValueExpression"><span class="hs-identifier hs-type">ValueExpression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-124"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-125"></span><span id="comparison"><span class="annot"><span class="annottext">comparison :: ValueExpression
+-&gt; ComparisonOperator -&gt; ValueExpression -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-var hs-var">comparison</span></a></span></span><span> </span><span id="local-6989586621679116202"><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116202"><span class="hs-identifier hs-var">left</span></a></span></span><span> </span><span id="local-6989586621679116201"><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="#local-6989586621679116201"><span class="hs-identifier hs-var">op</span></a></span></span><span> </span><span id="local-6989586621679116200"><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116200"><span class="hs-identifier hs-var">right</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-126"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; BooleanExpr) -&gt; RawSql -&gt; BooleanExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-127"></span><span>    </span><span class="annot"><span class="annottext">ValueExpression -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116202"><span class="hs-identifier hs-var">left</span></a></span><span>
+</span><span id="line-128"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span>
+</span><span id="line-129"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ComparisonOperator -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="#local-6989586621679116201"><span class="hs-identifier hs-var">op</span></a></span><span>
+</span><span id="line-130"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span>
+</span><span id="line-131"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ValueExpression -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116200"><span class="hs-identifier hs-var">right</span></a></span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnEquals"><span class="hs-identifier hs-type">columnEquals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-134"></span><span id="columnEquals"><span class="annot"><span class="annottext">columnEquals :: ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnEquals"><span class="hs-identifier hs-var hs-var">columnEquals</span></a></span></span><span> </span><span id="local-6989586621679116198"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116198"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679116197"><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116197"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-135"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression
+-&gt; ComparisonOperator -&gt; ValueExpression -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-var">comparison</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116198"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#equalsOp"><span class="hs-identifier hs-var">equalsOp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116197"><span class="hs-identifier hs-var">value</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnNotEquals"><span class="hs-identifier hs-type">columnNotEquals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-138"></span><span id="columnNotEquals"><span class="annot"><span class="annottext">columnNotEquals :: ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnNotEquals"><span class="hs-identifier hs-var hs-var">columnNotEquals</span></a></span></span><span> </span><span id="local-6989586621679116196"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116196"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679116195"><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116195"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-139"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression
+-&gt; ComparisonOperator -&gt; ValueExpression -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-var">comparison</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116196"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#notEqualsOp"><span class="hs-identifier hs-var">notEqualsOp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116195"><span class="hs-identifier hs-var">value</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-140"></span><span>
+</span><span id="line-141"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnGreaterThan"><span class="hs-identifier hs-type">columnGreaterThan</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-142"></span><span id="columnGreaterThan"><span class="annot"><span class="annottext">columnGreaterThan :: ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnGreaterThan"><span class="hs-identifier hs-var hs-var">columnGreaterThan</span></a></span></span><span> </span><span id="local-6989586621679116194"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116194"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679116193"><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116193"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-143"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression
+-&gt; ComparisonOperator -&gt; ValueExpression -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-var">comparison</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116194"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOp"><span class="hs-identifier hs-var">greaterThanOp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116193"><span class="hs-identifier hs-var">value</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-144"></span><span>
+</span><span id="line-145"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLessThan"><span class="hs-identifier hs-type">columnLessThan</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-146"></span><span id="columnLessThan"><span class="annot"><span class="annottext">columnLessThan :: ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLessThan"><span class="hs-identifier hs-var hs-var">columnLessThan</span></a></span></span><span> </span><span id="local-6989586621679116192"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116192"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679116191"><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116191"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-147"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression
+-&gt; ComparisonOperator -&gt; ValueExpression -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-var">comparison</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116192"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOp"><span class="hs-identifier hs-var">lessThanOp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116191"><span class="hs-identifier hs-var">value</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-148"></span><span>
+</span><span id="line-149"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnGreaterThanOrEqualTo"><span class="hs-identifier hs-type">columnGreaterThanOrEqualTo</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-150"></span><span id="columnGreaterThanOrEqualTo"><span class="annot"><span class="annottext">columnGreaterThanOrEqualTo :: ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnGreaterThanOrEqualTo"><span class="hs-identifier hs-var hs-var">columnGreaterThanOrEqualTo</span></a></span></span><span> </span><span id="local-6989586621679116190"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116190"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679116189"><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116189"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-151"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression
+-&gt; ComparisonOperator -&gt; ValueExpression -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-var">comparison</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116190"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOrEqualsOp"><span class="hs-identifier hs-var">greaterThanOrEqualsOp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116189"><span class="hs-identifier hs-var">value</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLessThanOrEqualTo"><span class="hs-identifier hs-type">columnLessThanOrEqualTo</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-154"></span><span id="columnLessThanOrEqualTo"><span class="annot"><span class="annottext">columnLessThanOrEqualTo :: ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLessThanOrEqualTo"><span class="hs-identifier hs-var hs-var">columnLessThanOrEqualTo</span></a></span></span><span> </span><span id="local-6989586621679116188"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116188"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679116187"><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116187"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-155"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression
+-&gt; ComparisonOperator -&gt; ValueExpression -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-var">comparison</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116188"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOrEqualsOp"><span class="hs-identifier hs-var">lessThanOrEqualsOp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116187"><span class="hs-identifier hs-var">value</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLike"><span class="hs-identifier hs-type">columnLike</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-158"></span><span id="columnLike"><span class="annot"><span class="annottext">columnLike :: ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLike"><span class="hs-identifier hs-var hs-var">columnLike</span></a></span></span><span> </span><span id="local-6989586621679116186"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116186"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679116185"><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116185"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-159"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression
+-&gt; ComparisonOperator -&gt; ValueExpression -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-var">comparison</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116186"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#likeOp"><span class="hs-identifier hs-var">likeOp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116185"><span class="hs-identifier hs-var">value</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLikeInsensitive"><span class="hs-identifier hs-type">columnLikeInsensitive</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-162"></span><span id="columnLikeInsensitive"><span class="annot"><span class="annottext">columnLikeInsensitive :: ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLikeInsensitive"><span class="hs-identifier hs-var hs-var">columnLikeInsensitive</span></a></span></span><span> </span><span id="local-6989586621679116184"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116184"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679116183"><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116183"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-163"></span><span>  </span><span class="annot"><span class="annottext">ValueExpression
+-&gt; ComparisonOperator -&gt; ValueExpression -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#comparison"><span class="hs-identifier hs-var">comparison</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116184"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#iLikeOp"><span class="hs-identifier hs-var">iLikeOp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SqlValue -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#valueExpression"><span class="hs-identifier hs-var">valueExpression</span></a></span><span> </span><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116183"><span class="hs-identifier hs-var">value</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-164"></span><span>
+</span><span id="line-165"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIsNull"><span class="hs-identifier hs-type">columnIsNull</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-166"></span><span id="columnIsNull"><span class="annot"><span class="annottext">columnIsNull :: ColumnName -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIsNull"><span class="hs-identifier hs-var hs-var">columnIsNull</span></a></span></span><span> </span><span id="local-6989586621679116182"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116182"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-167"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; BooleanExpr) -&gt; RawSql -&gt; BooleanExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-168"></span><span>    </span><span class="annot"><span class="annottext">ValueExpression -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116182"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-169"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span>
+</span><span id="line-170"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;IS NULL&quot;</span></span><span>
+</span><span id="line-171"></span><span>
+</span><span id="line-172"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIsNotNull"><span class="hs-identifier hs-type">columnIsNotNull</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">BooleanExpr</span></a></span><span>
+</span><span id="line-173"></span><span id="columnIsNotNull"><span class="annot"><span class="annottext">columnIsNotNull :: ColumnName -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIsNotNull"><span class="hs-identifier hs-var hs-var">columnIsNotNull</span></a></span></span><span> </span><span id="local-6989586621679116181"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116181"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-174"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-var">BooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; BooleanExpr) -&gt; RawSql -&gt; BooleanExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-175"></span><span>    </span><span class="annot"><span class="annottext">ValueExpression -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ColumnName -&gt; ValueExpression
+</span><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#columnReference"><span class="hs-identifier hs-var">columnReference</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116181"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-176"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span>
+</span><span id="line-177"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;IS NOT NULL&quot;</span></span><span>
+</span><span id="line-178"></span></pre></body></html>

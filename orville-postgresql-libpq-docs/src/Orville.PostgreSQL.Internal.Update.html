@@ -1,0 +1,427 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Update</span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier">Update</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-5"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToUpdateExpr"><span class="hs-identifier">updateToUpdateExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-6"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdate"><span class="hs-identifier">executeUpdate</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-7"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdateReturnEntities"><span class="hs-identifier">executeUpdateReturnEntities</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-8"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableReturning"><span class="hs-identifier">updateToTableReturning</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-9"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToTable"><span class="hs-identifier">updateToTable</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableFieldsReturning"><span class="hs-identifier">updateToTableFieldsReturning</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableFields"><span class="hs-identifier">updateToTableFields</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#rawUpdateExpr"><span class="hs-identifier">rawUpdateExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NonEmpty</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">nonEmpty</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Execute.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Execute</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Execute</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Expr</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.MonadOrville</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">MonadOrville</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.PrimaryKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEqualsExpr"><span class="hs-identifier">primaryKeyEqualsExpr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.QueryType.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.QueryType</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">QueryType</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.ReturningOption</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#NoReturningClause"><span class="hs-identifier">NoReturningClause</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningClause"><span class="hs-identifier">ReturningClause</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningOption"><span class="hs-identifier">ReturningOption</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithReturning"><span class="hs-identifier">WithReturning</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithoutReturning"><span class="hs-identifier">WithoutReturning</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.SelectOptions</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">SelectOptions</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.SqlMarshaller</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#AnnotatedSqlMarshaller"><span class="hs-identifier">AnnotatedSqlMarshaller</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#marshallEntityToSetClauses"><span class="hs-identifier">marshallEntityToSetClauses</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#unannotatedSqlMarshaller"><span class="hs-identifier">unannotatedSqlMarshaller</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier">HasKey</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier">TableDefinition</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#mkTableReturningClause"><span class="hs-identifier">mkTableReturningClause</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tableMarshaller"><span class="hs-identifier">tableMarshaller</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tableName"><span class="hs-identifier">tableName</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tablePrimaryKey"><span class="hs-identifier">tablePrimaryKey</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-comment">{- |
+  Represents an @UPDATE@ statement that can be executed against a database. An 'Update' has a
+  'SqlMarshaller' bound to it that, when the update returns data from the database, will be used to
+  decode the database result set when it is executed.
+-}</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">data</span><span> </span><span id="Update"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-var">Update</span></a></span></span><span> </span><span id="local-6989586621679121464"><span class="annot"><a href="#local-6989586621679121464"><span class="hs-identifier hs-type">readEntity</span></a></span></span><span> </span><span id="local-6989586621679121463"><span class="annot"><a href="#local-6989586621679121463"><span class="hs-identifier hs-type">returningClause</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-34"></span><span>  </span><span id="local-6989586621679121483"><span id="UpdateNoReturning"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#UpdateNoReturning"><span class="hs-identifier hs-var">UpdateNoReturning</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.UpdateExpr.html#UpdateExpr"><span class="hs-identifier hs-type">Expr.UpdateExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121483"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#NoReturningClause"><span class="hs-identifier hs-type">NoReturningClause</span></a></span></span><span>
+</span><span id="line-35"></span><span>  </span><span id="local-6989586621679121461"><span id="local-6989586621679121484"><span id="UpdateReturning"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#UpdateReturning"><span class="hs-identifier hs-var">UpdateReturning</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#AnnotatedSqlMarshaller"><span class="hs-identifier hs-type">AnnotatedSqlMarshaller</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121461"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121484"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.UpdateExpr.html#UpdateExpr"><span class="hs-identifier hs-type">Expr.UpdateExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121484"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningClause"><span class="hs-identifier hs-type">ReturningClause</span></a></span></span></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">{- |
+  Extracts the query that will be run when the update is executed. Normally you
+  don't want to extract the query and run it yourself, but this function is
+  useful to view the query for debugging or query explanation.
+-}</span><span>
+</span><span id="line-42"></span><span id="local-6989586621679121571"><span id="local-6989586621679121572"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToUpdateExpr"><span class="hs-identifier hs-type">updateToUpdateExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121572"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121571"><span class="hs-identifier hs-type">returningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.UpdateExpr.html#UpdateExpr"><span class="hs-identifier hs-type">Expr.UpdateExpr</span></a></span></span></span><span>
+</span><span id="line-43"></span><span id="updateToUpdateExpr"><span class="annot"><span class="annottext">updateToUpdateExpr :: Update readEntity returningClause -&gt; UpdateExpr
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToUpdateExpr"><span class="hs-identifier hs-var hs-var">updateToUpdateExpr</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#UpdateNoReturning"><span class="hs-identifier hs-type">UpdateNoReturning</span></a></span><span> </span><span id="local-6989586621679121459"><span class="annot"><span class="annottext">UpdateExpr
+</span><a href="#local-6989586621679121459"><span class="hs-identifier hs-var">expr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">UpdateExpr
+</span><a href="#local-6989586621679121459"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-44"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToUpdateExpr"><span class="hs-identifier hs-var">updateToUpdateExpr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#UpdateReturning"><span class="hs-identifier hs-type">UpdateReturning</span></a></span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679121458"><span class="annot"><span class="annottext">UpdateExpr
+</span><a href="#local-6989586621679121458"><span class="hs-identifier hs-var">expr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">UpdateExpr
+</span><a href="#local-6989586621679121458"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-comment">{- |
+  Executes the database query for the 'Update' and returns the number of
+  affected rows
+-}</span><span>
+</span><span id="line-50"></span><span id="local-6989586621679121455"><span id="local-6989586621679121456"><span id="local-6989586621679121457"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdate"><span class="hs-identifier hs-type">executeUpdate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121457"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121456"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121455"><span class="hs-identifier hs-type">returningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679121457"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span></span></span></span><span>
+</span><span id="line-51"></span><span id="executeUpdate"><span class="annot"><span class="annottext">executeUpdate :: Update readEntity returningClause -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdate"><span class="hs-identifier hs-var hs-var">executeUpdate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-52"></span><span>  </span><span class="annot"><span class="annottext">QueryType -&gt; UpdateExpr -&gt; m Int
+forall (m :: * -&gt; *) sql.
+(MonadOrville m, SqlExpression sql) =&gt;
+QueryType -&gt; sql -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.Execute.html#executeAndReturnAffectedRows"><span class="hs-identifier hs-var">Execute.executeAndReturnAffectedRows</span></a></span><span> </span><span class="annot"><span class="annottext">QueryType
+</span><a href="Orville.PostgreSQL.Internal.QueryType.html#UpdateQuery"><span class="hs-identifier hs-var">QueryType.UpdateQuery</span></a></span><span> </span><span class="annot"><span class="annottext">(UpdateExpr -&gt; m Int)
+-&gt; (Update readEntity returningClause -&gt; UpdateExpr)
+-&gt; Update readEntity returningClause
+-&gt; m Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Update readEntity returningClause -&gt; UpdateExpr
+forall readEntity returningClause.
+Update readEntity returningClause -&gt; UpdateExpr
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToUpdateExpr"><span class="hs-identifier hs-var">updateToUpdateExpr</span></a></span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span class="hs-comment">{- |
+  Executes the database query for the 'Update' and uses its
+  'AnnotatedSqlMarshaller' to decode any rows that were just updated, as
+  returned via a RETURNING clause.
+-}</span><span>
+</span><span id="line-59"></span><span id="local-6989586621679121450"><span id="local-6989586621679121451"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdateReturnEntities"><span class="hs-identifier hs-type">executeUpdateReturnEntities</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121451"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121450"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningClause"><span class="hs-identifier hs-type">ReturningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679121451"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679121450"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-60"></span><span id="executeUpdateReturnEntities"><span class="annot"><span class="annottext">executeUpdateReturnEntities :: Update readEntity ReturningClause -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdateReturnEntities"><span class="hs-identifier hs-var hs-var">executeUpdateReturnEntities</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#UpdateReturning"><span class="hs-identifier hs-type">UpdateReturning</span></a></span><span> </span><span id="local-6989586621679121449"><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><a href="#local-6989586621679121449"><span class="hs-identifier hs-var">marshaller</span></a></span></span><span> </span><span id="local-6989586621679121448"><span class="annot"><span class="annottext">UpdateExpr
+</span><a href="#local-6989586621679121448"><span class="hs-identifier hs-var">expr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-61"></span><span>  </span><span class="annot"><span class="annottext">QueryType
+-&gt; UpdateExpr
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; m [readEntity]
+forall (m :: * -&gt; *) sql writeEntity readEntity.
+(MonadOrville m, SqlExpression sql) =&gt;
+QueryType
+-&gt; sql
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.Execute.html#executeAndDecode"><span class="hs-identifier hs-var">Execute.executeAndDecode</span></a></span><span> </span><span class="annot"><span class="annottext">QueryType
+</span><a href="Orville.PostgreSQL.Internal.QueryType.html#UpdateQuery"><span class="hs-identifier hs-var">QueryType.UpdateQuery</span></a></span><span> </span><span class="annot"><span class="annottext">UpdateExpr
+</span><a href="#local-6989586621679121448"><span class="hs-identifier hs-var">expr</span></a></span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><a href="#local-6989586621679121449"><span class="hs-identifier hs-var">marshaller</span></a></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">{- |
+  Builds an 'Update' that will update all of the writable columns described in
+  the 'TableDefinition' without returning the data as seen by the database.
+
+  This function returns 'Nothing' if the 'TableDefinition' has no columns,
+  which would otherwise generate and 'Update' with invalid SQL syntax.
+-}</span><span>
+</span><span id="line-70"></span><span id="local-6989586621679121444"><span id="local-6989586621679121445"><span id="local-6989586621679121446"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToTable"><span class="hs-identifier hs-type">updateToTable</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-71"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121446"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121445"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121444"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-72"></span><span>  </span><span class="annot"><a href="#local-6989586621679121446"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-73"></span><span>  </span><span class="annot"><a href="#local-6989586621679121445"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-74"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121444"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#NoReturningClause"><span class="hs-identifier hs-type">NoReturningClause</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-75"></span><span id="updateToTable"><span class="annot"><span class="annottext">updateToTable :: TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key
+-&gt; writeEntity
+-&gt; Maybe (Update readEntity NoReturningClause)
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToTable"><span class="hs-identifier hs-var hs-var">updateToTable</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-76"></span><span>  </span><span class="annot"><span class="annottext">ReturningOption NoReturningClause
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key
+-&gt; writeEntity
+-&gt; Maybe (Update readEntity NoReturningClause)
+forall returningClause key writeEntity readEntity.
+ReturningOption returningClause
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key
+-&gt; writeEntity
+-&gt; Maybe (Update readEntity returningClause)
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateTable"><span class="hs-identifier hs-var">updateTable</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithoutReturning"><span class="hs-identifier hs-var">WithoutReturning</span></a></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="hs-comment">{- |
+  Builds an 'Update' that will update all of the writable columns described in
+  the 'TableDefinition' and returning the data as seen by the database. This is
+  useful for getting database managed columns such as auto-incrementing
+  identifiers and sequences.
+
+  This function returns 'Nothing' if the 'TableDefinition' has no columns,
+  which would otherwise generate and 'Update' with invalid SQL syntax.
+-}</span><span>
+</span><span id="line-87"></span><span id="local-6989586621679121440"><span id="local-6989586621679121441"><span id="local-6989586621679121442"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableReturning"><span class="hs-identifier hs-type">updateToTableReturning</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-88"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121442"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121441"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121440"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-89"></span><span>  </span><span class="annot"><a href="#local-6989586621679121442"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-90"></span><span>  </span><span class="annot"><a href="#local-6989586621679121441"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121440"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningClause"><span class="hs-identifier hs-type">ReturningClause</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-92"></span><span id="updateToTableReturning"><span class="annot"><span class="annottext">updateToTableReturning :: TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key -&gt; writeEntity -&gt; Maybe (Update readEntity ReturningClause)
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableReturning"><span class="hs-identifier hs-var hs-var">updateToTableReturning</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-93"></span><span>  </span><span class="annot"><span class="annottext">ReturningOption ReturningClause
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key
+-&gt; writeEntity
+-&gt; Maybe (Update readEntity ReturningClause)
+forall returningClause key writeEntity readEntity.
+ReturningOption returningClause
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key
+-&gt; writeEntity
+-&gt; Maybe (Update readEntity returningClause)
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateTable"><span class="hs-identifier hs-var">updateTable</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithReturning"><span class="hs-identifier hs-var">WithReturning</span></a></span><span>
+</span><span id="line-94"></span><span>
+</span><span id="line-95"></span><span class="hs-comment">-- an internal helper function for creating an update with a given</span><span>
+</span><span id="line-96"></span><span class="hs-comment">-- `ReturningOption` to a single entity in a table, setting all the</span><span>
+</span><span id="line-97"></span><span class="hs-comment">-- columns found in the table's SQL marshaller.</span><span>
+</span><span id="line-98"></span><span id="local-6989586621679121552"><span id="local-6989586621679121553"><span id="local-6989586621679121554"><span id="local-6989586621679121555"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateTable"><span class="hs-identifier hs-type">updateTable</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-99"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningOption"><span class="hs-identifier hs-type">ReturningOption</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121555"><span class="hs-identifier hs-type">returningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-100"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121554"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121553"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121552"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-101"></span><span>  </span><span class="annot"><a href="#local-6989586621679121554"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-102"></span><span>  </span><span class="annot"><a href="#local-6989586621679121553"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-103"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121552"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121555"><span class="hs-identifier hs-type">returningClause</span></a></span><span class="hs-special">)</span></span></span></span></span><span>
+</span><span id="line-104"></span><span id="updateTable"><span class="annot"><span class="annottext">updateTable :: ReturningOption returningClause
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key
+-&gt; writeEntity
+-&gt; Maybe (Update readEntity returningClause)
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateTable"><span class="hs-identifier hs-var hs-var">updateTable</span></a></span></span><span> </span><span id="local-6989586621679121439"><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="#local-6989586621679121439"><span class="hs-identifier hs-var">returningOption</span></a></span></span><span> </span><span id="local-6989586621679121438"><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121438"><span class="hs-identifier hs-var">tableDef</span></a></span></span><span> </span><span id="local-6989586621679121437"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121437"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679121436"><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121436"><span class="hs-identifier hs-var">writeEntity</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-105"></span><span>  </span><span id="local-6989586621679121435"><span class="annot"><span class="annottext">NonEmpty SetClause
+</span><a href="#local-6989586621679121435"><span class="hs-identifier hs-var">setClauses</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-106"></span><span>    </span><span class="annot"><span class="annottext">[SetClause] -&gt; Maybe (NonEmpty SetClause)
+forall a. [a] -&gt; Maybe (NonEmpty a)
+</span><span class="hs-identifier hs-var">nonEmpty</span></span><span> </span><span class="annot"><span class="annottext">([SetClause] -&gt; Maybe (NonEmpty SetClause))
+-&gt; [SetClause] -&gt; Maybe (NonEmpty SetClause)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-107"></span><span>      </span><span class="annot"><span class="annottext">SqlMarshaller writeEntity readEntity -&gt; writeEntity -&gt; [SetClause]
+forall writeEntity readEntity.
+SqlMarshaller writeEntity readEntity -&gt; writeEntity -&gt; [SetClause]
+</span><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#marshallEntityToSetClauses"><span class="hs-identifier hs-var">marshallEntityToSetClauses</span></a></span><span>
+</span><span id="line-108"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; SqlMarshaller writeEntity readEntity
+forall writeEntity readEntity.
+AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; SqlMarshaller writeEntity readEntity
+</span><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#unannotatedSqlMarshaller"><span class="hs-identifier hs-var hs-var">unannotatedSqlMarshaller</span></a></span><span> </span><span class="annot"><span class="annottext">(AnnotatedSqlMarshaller writeEntity readEntity
+ -&gt; SqlMarshaller writeEntity readEntity)
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; SqlMarshaller writeEntity readEntity
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tableMarshaller"><span class="hs-identifier hs-var">tableMarshaller</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121438"><span class="hs-identifier hs-var">tableDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>        </span><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121436"><span class="hs-identifier hs-var">writeEntity</span></a></span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679121434"><span class="annot"><span class="annottext">isEntityKey :: WhereCondition
+</span><a href="#local-6989586621679121434"><span class="hs-identifier hs-var hs-var">isEntityKey</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-112"></span><span>        </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereBooleanExpr"><span class="hs-identifier hs-var">SelectOptions.whereBooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-113"></span><span>          </span><span class="annot"><span class="annottext">PrimaryKey key -&gt; key -&gt; BooleanExpr
+forall key. PrimaryKey key -&gt; key -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEqualsExpr"><span class="hs-identifier hs-var">primaryKeyEqualsExpr</span></a></span><span>
+</span><span id="line-114"></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; PrimaryKey key
+forall key writeEntity readEntity.
+TableDefinition (HasKey key) writeEntity readEntity
+-&gt; PrimaryKey key
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tablePrimaryKey"><span class="hs-identifier hs-var">tablePrimaryKey</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121438"><span class="hs-identifier hs-var">tableDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-115"></span><span>            </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121437"><span class="hs-identifier hs-var">key</span></a></span><span>
+</span><span id="line-116"></span><span>  </span><span class="annot"><span class="annottext">Update readEntity returningClause
+-&gt; Maybe (Update readEntity returningClause)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Update readEntity returningClause
+ -&gt; Maybe (Update readEntity returningClause))
+-&gt; Update readEntity returningClause
+-&gt; Maybe (Update readEntity returningClause)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-117"></span><span>    </span><span class="annot"><span class="annottext">ReturningOption returningClause
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity returningClause
+forall returningClause key writeEntity readEntity.
+ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateFields"><span class="hs-identifier hs-var">updateFields</span></a></span><span>
+</span><span id="line-118"></span><span>      </span><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="#local-6989586621679121439"><span class="hs-identifier hs-var">returningOption</span></a></span><span>
+</span><span id="line-119"></span><span>      </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121438"><span class="hs-identifier hs-var">tableDef</span></a></span><span>
+</span><span id="line-120"></span><span>      </span><span class="annot"><span class="annottext">NonEmpty SetClause
+</span><a href="#local-6989586621679121435"><span class="hs-identifier hs-var">setClauses</span></a></span><span>
+</span><span id="line-121"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">WhereCondition -&gt; Maybe WhereCondition
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679121434"><span class="hs-identifier hs-var">isEntityKey</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span class="hs-comment">{- |
+  Builds an 'Update' that will apply the specified column set clauses to rows
+  the specified table without returning the data as seen by the database.
+-}</span><span>
+</span><span id="line-127"></span><span id="local-6989586621679121429"><span id="local-6989586621679121430"><span id="local-6989586621679121431"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableFields"><span class="hs-identifier hs-type">updateToTableFields</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-128"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121431"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121430"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121429"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-129"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-type">Expr.SetClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-130"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">SelectOptions.WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-131"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121429"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#NoReturningClause"><span class="hs-identifier hs-type">NoReturningClause</span></a></span></span></span></span><span>
+</span><span id="line-132"></span><span id="updateToTableFields"><span class="annot"><span class="annottext">updateToTableFields :: TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableFields"><span class="hs-identifier hs-var hs-var">updateToTableFields</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-133"></span><span>  </span><span class="annot"><span class="annottext">ReturningOption NoReturningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity NoReturningClause
+forall returningClause key writeEntity readEntity.
+ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateFields"><span class="hs-identifier hs-var">updateFields</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithoutReturning"><span class="hs-identifier hs-var">WithoutReturning</span></a></span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span class="hs-comment">{- |
+  Builds an 'Update' that will apply the specified column set clauses to rows
+  the specified table and return the updated version of any rows affected by
+  the update state by using a @RETURNING@ clause.
+-}</span><span>
+</span><span id="line-140"></span><span id="local-6989586621679121426"><span id="local-6989586621679121427"><span id="local-6989586621679121428"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableFieldsReturning"><span class="hs-identifier hs-type">updateToTableFieldsReturning</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-141"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121428"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121427"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121426"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-142"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-type">Expr.SetClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-143"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">SelectOptions.WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-144"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121426"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningClause"><span class="hs-identifier hs-type">ReturningClause</span></a></span></span></span></span><span>
+</span><span id="line-145"></span><span id="updateToTableFieldsReturning"><span class="annot"><span class="annottext">updateToTableFieldsReturning :: TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableFieldsReturning"><span class="hs-identifier hs-var hs-var">updateToTableFieldsReturning</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-146"></span><span>  </span><span class="annot"><span class="annottext">ReturningOption ReturningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity ReturningClause
+forall returningClause key writeEntity readEntity.
+ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateFields"><span class="hs-identifier hs-var">updateFields</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithReturning"><span class="hs-identifier hs-var">WithReturning</span></a></span><span>
+</span><span id="line-147"></span><span>
+</span><span id="line-148"></span><span class="hs-comment">-- an internal helper function for creating an update with a given</span><span>
+</span><span id="line-149"></span><span class="hs-comment">-- `ReturningOption` to update the specified columns.</span><span>
+</span><span id="line-150"></span><span id="local-6989586621679121518"><span id="local-6989586621679121519"><span id="local-6989586621679121520"><span id="local-6989586621679121521"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#updateFields"><span class="hs-identifier hs-type">updateFields</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-151"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningOption"><span class="hs-identifier hs-type">ReturningOption</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121521"><span class="hs-identifier hs-type">returningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-152"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121520"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121519"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121518"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-153"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-type">Expr.SetClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-154"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">SelectOptions.WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-155"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121518"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121521"><span class="hs-identifier hs-type">returningClause</span></a></span></span></span></span></span><span>
+</span><span id="line-156"></span><span id="updateFields"><span class="annot"><span class="annottext">updateFields :: ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateFields"><span class="hs-identifier hs-var hs-var">updateFields</span></a></span></span><span> </span><span id="local-6989586621679121425"><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="#local-6989586621679121425"><span class="hs-identifier hs-var">returingOption</span></a></span></span><span> </span><span id="local-6989586621679121424"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121424"><span class="hs-identifier hs-var">tableDef</span></a></span></span><span> </span><span id="local-6989586621679121423"><span class="annot"><span class="annottext">NonEmpty SetClause
+</span><a href="#local-6989586621679121423"><span class="hs-identifier hs-var">setClauses</span></a></span></span><span> </span><span id="local-6989586621679121422"><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121422"><span class="hs-identifier hs-var">mbWhereCondition</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-157"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679121421"><span class="annot"><span class="annottext">whereClause :: Maybe WhereClause
+</span><a href="#local-6989586621679121421"><span class="hs-identifier hs-var hs-var">whereClause</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-158"></span><span>        </span><span class="annot"><span class="annottext">(WhereCondition -&gt; WhereClause)
+-&gt; Maybe WhereCondition -&gt; Maybe WhereClause
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span>
+</span><span id="line-159"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereClause
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.WhereClause.html#whereClause"><span class="hs-identifier hs-var">Expr.whereClause</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereClause)
+-&gt; (WhereCondition -&gt; BooleanExpr) -&gt; WhereCondition -&gt; WhereClause
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">WhereCondition -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier hs-var">SelectOptions.whereConditionToBooleanExpr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-160"></span><span>          </span><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121422"><span class="hs-identifier hs-var">mbWhereCondition</span></a></span><span>
+</span><span id="line-161"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">ReturningOption returningClause
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; UpdateExpr
+-&gt; Update readEntity returningClause
+forall returningClause writeEntity readEntity.
+ReturningOption returningClause
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; UpdateExpr
+-&gt; Update readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#rawUpdateExpr"><span class="hs-identifier hs-var">rawUpdateExpr</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="#local-6989586621679121425"><span class="hs-identifier hs-var">returingOption</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tableMarshaller"><span class="hs-identifier hs-var">tableMarshaller</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121424"><span class="hs-identifier hs-var">tableDef</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(UpdateExpr -&gt; Update readEntity returningClause)
+-&gt; UpdateExpr -&gt; Update readEntity returningClause
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-162"></span><span>        </span><span class="annot"><span class="annottext">Qualified TableName
+-&gt; SetClauseList
+-&gt; Maybe WhereClause
+-&gt; Maybe ReturningExpr
+-&gt; UpdateExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Update.UpdateExpr.html#updateExpr"><span class="hs-identifier hs-var">Expr.updateExpr</span></a></span><span>
+</span><span id="line-163"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity -&gt; Qualified TableName
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity -&gt; Qualified TableName
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tableName"><span class="hs-identifier hs-var">tableName</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121424"><span class="hs-identifier hs-var">tableDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-164"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NonEmpty SetClause -&gt; SetClauseList
+</span><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClauseList.html#setClauseList"><span class="hs-identifier hs-var">Expr.setClauseList</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty SetClause
+</span><a href="#local-6989586621679121423"><span class="hs-identifier hs-var">setClauses</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-165"></span><span>          </span><span class="annot"><span class="annottext">Maybe WhereClause
+</span><a href="#local-6989586621679121421"><span class="hs-identifier hs-var">whereClause</span></a></span><span>
+</span><span id="line-166"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; Maybe ReturningExpr
+forall returningClause key writeEntity readEntty.
+ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntty -&gt; Maybe ReturningExpr
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#mkTableReturningClause"><span class="hs-identifier hs-var">mkTableReturningClause</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="#local-6989586621679121425"><span class="hs-identifier hs-var">returingOption</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121424"><span class="hs-identifier hs-var">tableDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-167"></span><span>
+</span><span id="line-168"></span><span class="hs-comment">{- |
+  Builds an 'Update' that will execute the specified query and use the given 'AnnotatedSqlMarshaller' to
+  decode it. It is up to the caller to ensure that the given 'Expr.UpdateExpr' makes sense and
+  produces a value that can be stored, as well as returning a result that the 'AnnotatedSqlMarshaller' can
+  decode.
+
+  This is the lowest level of escape hatch available for 'Update'. The caller can build any query
+  that Orville supports using the expression building functions, or use @RawSql.fromRawSql@ to build
+  a raw 'Expr.UpdateExpr'.
+-}</span><span>
+</span><span id="line-178"></span><span id="local-6989586621679121500"><span id="local-6989586621679121501"><span id="local-6989586621679121502"><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#rawUpdateExpr"><span class="hs-identifier hs-type">rawUpdateExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningOption"><span class="hs-identifier hs-type">ReturningOption</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121502"><span class="hs-identifier hs-type">returningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#AnnotatedSqlMarshaller"><span class="hs-identifier hs-type">AnnotatedSqlMarshaller</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121501"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121500"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.UpdateExpr.html#UpdateExpr"><span class="hs-identifier hs-type">Expr.UpdateExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#Update"><span class="hs-identifier hs-type">Update</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121500"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121502"><span class="hs-identifier hs-type">returningClause</span></a></span></span></span></span><span>
+</span><span id="line-179"></span><span id="rawUpdateExpr"><span class="annot"><span class="annottext">rawUpdateExpr :: ReturningOption returningClause
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; UpdateExpr
+-&gt; Update readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#rawUpdateExpr"><span class="hs-identifier hs-var hs-var">rawUpdateExpr</span></a></span></span><span> </span><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithReturning"><span class="hs-identifier hs-var">WithReturning</span></a></span><span> </span><span id="local-6989586621679121416"><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><a href="#local-6989586621679121416"><span class="hs-identifier hs-var">marshaller</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; UpdateExpr -&gt; Update readEntity ReturningClause
+forall writeEntity readEntity.
+AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; UpdateExpr -&gt; Update readEntity ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#UpdateReturning"><span class="hs-identifier hs-var">UpdateReturning</span></a></span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><a href="#local-6989586621679121416"><span class="hs-identifier hs-var">marshaller</span></a></span><span>
+</span><span id="line-180"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html#rawUpdateExpr"><span class="hs-identifier hs-var">rawUpdateExpr</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithoutReturning"><span class="hs-identifier hs-var">WithoutReturning</span></a></span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">UpdateExpr -&gt; Update readEntity returningClause
+forall readEntity.
+UpdateExpr -&gt; Update readEntity NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#UpdateNoReturning"><span class="hs-identifier hs-var">UpdateNoReturning</span></a></span><span>
+</span><span id="line-181"></span></pre></body></html>

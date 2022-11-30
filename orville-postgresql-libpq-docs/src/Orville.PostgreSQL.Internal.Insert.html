@@ -1,0 +1,225 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+
+Module    : Orville.PostgreSQL.Internal.Insert
+Copyright : Flipstone Technology Partners 2021
+License   : MIT
+-}</span><span>
+</span><span id="line-9"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Insert</span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier">Insert</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#insertToInsertExpr"><span class="hs-identifier">insertToInsertExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#executeInsert"><span class="hs-identifier">executeInsert</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#executeInsertReturnEntities"><span class="hs-identifier">executeInsertReturnEntities</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#insertToTableReturning"><span class="hs-identifier">insertToTableReturning</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#insertToTable"><span class="hs-identifier">insertToTable</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#rawInsertExpr"><span class="hs-identifier">rawInsertExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NonEmpty</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Execute.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Execute</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Execute</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Expr</span></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.MonadOrville</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">MonadOrville</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.QueryType.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.QueryType</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">QueryType</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.ReturningOption</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#NoReturningClause"><span class="hs-identifier">NoReturningClause</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningClause"><span class="hs-identifier">ReturningClause</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningOption"><span class="hs-identifier">ReturningOption</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithReturning"><span class="hs-identifier">WithReturning</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithoutReturning"><span class="hs-identifier">WithoutReturning</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.SqlMarshaller</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#AnnotatedSqlMarshaller"><span class="hs-identifier">AnnotatedSqlMarshaller</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier">TableDefinition</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#mkInsertExpr"><span class="hs-identifier">mkInsertExpr</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tableMarshaller"><span class="hs-identifier">tableMarshaller</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-comment">{- | Represents an @INSERT@ statement that can be executed against a database. An 'Insert' has a
+  'SqlMarshaller' bound to it that, when the insert returns data from the database, will be used to
+  decode the database result set when it is executed.
+-}</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">data</span><span> </span><span id="Insert"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-var">Insert</span></a></span></span><span> </span><span id="local-6989586621679121008"><span class="annot"><a href="#local-6989586621679121008"><span class="hs-identifier hs-type">readEntity</span></a></span></span><span> </span><span id="local-6989586621679121007"><span class="annot"><a href="#local-6989586621679121007"><span class="hs-identifier hs-type">returningClause</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-35"></span><span>  </span><span id="local-6989586621679121006"><span id="local-6989586621679121019"><span id="Insert"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-var">Insert</span></a></span></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-36"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#AnnotatedSqlMarshaller"><span class="hs-identifier hs-type">AnnotatedSqlMarshaller</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121006"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121019"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-37"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#InsertExpr"><span class="hs-identifier hs-type">Expr.InsertExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-38"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121019"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#NoReturningClause"><span class="hs-identifier hs-type">NoReturningClause</span></a></span></span></span><span>
+</span><span id="line-39"></span><span>  </span><span id="local-6989586621679121004"><span id="local-6989586621679121021"><span id="InsertReturning"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#InsertReturning"><span class="hs-identifier hs-var">InsertReturning</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#AnnotatedSqlMarshaller"><span class="hs-identifier hs-type">AnnotatedSqlMarshaller</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121004"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121021"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#InsertExpr"><span class="hs-identifier hs-type">Expr.InsertExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121021"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningClause"><span class="hs-identifier hs-type">ReturningClause</span></a></span></span></span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-comment">{- |
+  Extracts the query that will be run when the insert is executed. Normally you
+  don't want to extract the query and run it yourself, but this function is
+  useful to view the query for debugging or query explanation.
+-}</span><span>
+</span><span id="line-46"></span><span id="local-6989586621679121001"><span id="local-6989586621679121002"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#insertToInsertExpr"><span class="hs-identifier hs-type">insertToInsertExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121002"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121001"><span class="hs-identifier hs-type">returningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#InsertExpr"><span class="hs-identifier hs-type">Expr.InsertExpr</span></a></span></span></span><span>
+</span><span id="line-47"></span><span id="insertToInsertExpr"><span class="annot"><span class="annottext">insertToInsertExpr :: Insert readEntity returningClause -&gt; InsertExpr
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#insertToInsertExpr"><span class="hs-identifier hs-var hs-var">insertToInsertExpr</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679121000"><span class="annot"><span class="annottext">InsertExpr
+</span><a href="#local-6989586621679121000"><span class="hs-identifier hs-var">expr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">InsertExpr
+</span><a href="#local-6989586621679121000"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-48"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#insertToInsertExpr"><span class="hs-identifier hs-var">insertToInsertExpr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#InsertReturning"><span class="hs-identifier hs-type">InsertReturning</span></a></span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679120999"><span class="annot"><span class="annottext">InsertExpr
+</span><a href="#local-6989586621679120999"><span class="hs-identifier hs-var">expr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">InsertExpr
+</span><a href="#local-6989586621679120999"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="hs-comment">{- |
+  Excutes the database query for the 'Insert' and returns the number of rows
+  affected by the query
+-}</span><span>
+</span><span id="line-54"></span><span id="local-6989586621679120997"><span id="local-6989586621679120998"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#executeInsert"><span class="hs-identifier hs-type">executeInsert</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-55"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120998"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-56"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120997"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#NoReturningClause"><span class="hs-identifier hs-type">NoReturningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-57"></span><span>  </span><span class="annot"><a href="#local-6989586621679120998"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span></span></span><span>
+</span><span id="line-58"></span><span id="executeInsert"><span class="annot"><span class="annottext">executeInsert :: Insert readEntity NoReturningClause -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#executeInsert"><span class="hs-identifier hs-var hs-var">executeInsert</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679120996"><span class="annot"><span class="annottext">InsertExpr
+</span><a href="#local-6989586621679120996"><span class="hs-identifier hs-var">expr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-59"></span><span>  </span><span class="annot"><span class="annottext">QueryType -&gt; InsertExpr -&gt; m Int
+forall (m :: * -&gt; *) sql.
+(MonadOrville m, SqlExpression sql) =&gt;
+QueryType -&gt; sql -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.Execute.html#executeAndReturnAffectedRows"><span class="hs-identifier hs-var">Execute.executeAndReturnAffectedRows</span></a></span><span> </span><span class="annot"><span class="annottext">QueryType
+</span><a href="Orville.PostgreSQL.Internal.QueryType.html#InsertQuery"><span class="hs-identifier hs-var">QueryType.InsertQuery</span></a></span><span> </span><span class="annot"><span class="annottext">InsertExpr
+</span><a href="#local-6989586621679120996"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-comment">{- | Excutes the database query for the 'Insert' and uses its 'SqlMarshaller' to decode the rows (that
+  were just inserted) as returned via a RETURNING clause.
+-}</span><span>
+</span><span id="line-64"></span><span id="local-6989586621679120992"><span id="local-6989586621679120993"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#executeInsertReturnEntities"><span class="hs-identifier hs-type">executeInsertReturnEntities</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-65"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120993"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-66"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120992"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningClause"><span class="hs-identifier hs-type">ReturningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-67"></span><span>  </span><span class="annot"><a href="#local-6989586621679120993"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679120992"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-68"></span><span id="executeInsertReturnEntities"><span class="annot"><span class="annottext">executeInsertReturnEntities :: Insert readEntity ReturningClause -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#executeInsertReturnEntities"><span class="hs-identifier hs-var hs-var">executeInsertReturnEntities</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#InsertReturning"><span class="hs-identifier hs-type">InsertReturning</span></a></span><span> </span><span id="local-6989586621679120991"><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><a href="#local-6989586621679120991"><span class="hs-identifier hs-var">marshaller</span></a></span></span><span> </span><span id="local-6989586621679120990"><span class="annot"><span class="annottext">InsertExpr
+</span><a href="#local-6989586621679120990"><span class="hs-identifier hs-var">expr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-69"></span><span>  </span><span class="annot"><span class="annottext">QueryType
+-&gt; InsertExpr
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; m [readEntity]
+forall (m :: * -&gt; *) sql writeEntity readEntity.
+(MonadOrville m, SqlExpression sql) =&gt;
+QueryType
+-&gt; sql
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.Execute.html#executeAndDecode"><span class="hs-identifier hs-var">Execute.executeAndDecode</span></a></span><span> </span><span class="annot"><span class="annottext">QueryType
+</span><a href="Orville.PostgreSQL.Internal.QueryType.html#InsertQuery"><span class="hs-identifier hs-var">QueryType.InsertQuery</span></a></span><span> </span><span class="annot"><span class="annottext">InsertExpr
+</span><a href="#local-6989586621679120990"><span class="hs-identifier hs-var">expr</span></a></span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+</span><a href="#local-6989586621679120991"><span class="hs-identifier hs-var">marshaller</span></a></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="hs-comment">{- |
+  Builds an 'Insert' that will insert all of the writeable columns described in the
+  'TableDefinition' without returning the data as seen by the database.
+-}</span><span>
+</span><span id="line-75"></span><span id="local-6989586621679120986"><span id="local-6989586621679120987"><span id="local-6989586621679120988"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#insertToTable"><span class="hs-identifier hs-type">insertToTable</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-76"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120988"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120987"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120986"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-77"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679120987"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-78"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120986"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#NoReturningClause"><span class="hs-identifier hs-type">NoReturningClause</span></a></span></span></span></span><span>
+</span><span id="line-79"></span><span id="insertToTable"><span class="annot"><span class="annottext">insertToTable :: TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; Insert readEntity NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#insertToTable"><span class="hs-identifier hs-var hs-var">insertToTable</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-80"></span><span>  </span><span class="annot"><span class="annottext">ReturningOption NoReturningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity
+-&gt; Insert readEntity NoReturningClause
+forall returningClause key writeEntity readEntity.
+ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity
+-&gt; Insert readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#insertTable"><span class="hs-identifier hs-var">insertTable</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithoutReturning"><span class="hs-identifier hs-var">WithoutReturning</span></a></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="hs-comment">{- |
+  Builds an 'Insert' that will insert all of the writeable columns described in the
+  'TableDefinition' and returning the data as seen by the database. This is useful for getting
+  database managed columns such as auto-incrementing identifiers and sequences.
+-}</span><span>
+</span><span id="line-87"></span><span id="local-6989586621679120982"><span id="local-6989586621679120983"><span id="local-6989586621679120984"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#insertToTableReturning"><span class="hs-identifier hs-type">insertToTableReturning</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-88"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120984"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120983"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120982"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-89"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679120983"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-90"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679120982"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningClause"><span class="hs-identifier hs-type">ReturningClause</span></a></span></span></span></span><span>
+</span><span id="line-91"></span><span id="insertToTableReturning"><span class="annot"><span class="annottext">insertToTableReturning :: TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; Insert readEntity ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#insertToTableReturning"><span class="hs-identifier hs-var hs-var">insertToTableReturning</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-92"></span><span>  </span><span class="annot"><span class="annottext">ReturningOption ReturningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity
+-&gt; Insert readEntity ReturningClause
+forall returningClause key writeEntity readEntity.
+ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity
+-&gt; Insert readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#insertTable"><span class="hs-identifier hs-var">insertTable</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithReturning"><span class="hs-identifier hs-var">WithReturning</span></a></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- an internal helper function for creating an insert with a given `ReturningOption`</span><span>
+</span><span id="line-95"></span><span id="local-6989586621679121043"><span id="local-6989586621679121044"><span id="local-6989586621679121045"><span id="local-6989586621679121046"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#insertTable"><span class="hs-identifier hs-type">insertTable</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-96"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningOption"><span class="hs-identifier hs-type">ReturningOption</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121046"><span class="hs-identifier hs-type">returningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-97"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121045"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121044"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121043"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-98"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679121044"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-99"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121043"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121046"><span class="hs-identifier hs-type">returningClause</span></a></span></span></span></span></span><span>
+</span><span id="line-100"></span><span id="insertTable"><span class="annot"><span class="annottext">insertTable :: ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity
+-&gt; Insert readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#insertTable"><span class="hs-identifier hs-var hs-var">insertTable</span></a></span></span><span> </span><span id="local-6989586621679120981"><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="#local-6989586621679120981"><span class="hs-identifier hs-var">returningOption</span></a></span></span><span> </span><span id="local-6989586621679120980"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679120980"><span class="hs-identifier hs-var">tableDef</span></a></span></span><span> </span><span id="local-6989586621679120979"><span class="annot"><span class="annottext">NonEmpty writeEntity
+</span><a href="#local-6989586621679120979"><span class="hs-identifier hs-var">entities</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-101"></span><span>  </span><span class="annot"><span class="annottext">ReturningOption returningClause
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; InsertExpr
+-&gt; Insert readEntity returningClause
+forall returningClause writeEntity readEntity.
+ReturningOption returningClause
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; InsertExpr
+-&gt; Insert readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#rawInsertExpr"><span class="hs-identifier hs-var">rawInsertExpr</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="#local-6989586621679120981"><span class="hs-identifier hs-var">returningOption</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tableMarshaller"><span class="hs-identifier hs-var">tableMarshaller</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679120980"><span class="hs-identifier hs-var">tableDef</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity
+-&gt; InsertExpr
+forall returningClause key writeEntity readEntity.
+ReturningOption returningClause
+-&gt; TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity
+-&gt; InsertExpr
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#mkInsertExpr"><span class="hs-identifier hs-var">mkInsertExpr</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="#local-6989586621679120981"><span class="hs-identifier hs-var">returningOption</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679120980"><span class="hs-identifier hs-var">tableDef</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty writeEntity
+</span><a href="#local-6989586621679120979"><span class="hs-identifier hs-var">entities</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span class="hs-comment">{- |
+  Builds an 'Insert' that will execute the specified query and use the given 'SqlMarshaller' to
+  decode it. It is up to the caller to ensure that the given 'Expr.InsertExpr' makes sense and
+  produces a value that can be stored, as well as returning a result that the 'SqlMarshaller' can
+  decode.
+
+  This is the lowest level of escape hatch available for 'Update'. The caller can build any query
+  that Orville supports using the expression building functions, or use @RawSql.fromRawSql@ to build
+  a raw 'Expr.InsertExpr'. It is expected that the 'ReturningOption' given matches the
+  'Expr.InsertExpr'. This level of interface does not provide an automatic enforcement of the
+  expectation, however failure is likely if that is not met.
+-}</span><span>
+</span><span id="line-115"></span><span id="local-6989586621679121033"><span id="local-6989586621679121034"><span id="local-6989586621679121035"><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#rawInsertExpr"><span class="hs-identifier hs-type">rawInsertExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.ReturningOption.html#ReturningOption"><span class="hs-identifier hs-type">ReturningOption</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121035"><span class="hs-identifier hs-type">returningClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlMarshaller.html#AnnotatedSqlMarshaller"><span class="hs-identifier hs-type">AnnotatedSqlMarshaller</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121034"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121033"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#InsertExpr"><span class="hs-identifier hs-type">Expr.InsertExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-type">Insert</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121033"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121035"><span class="hs-identifier hs-type">returningClause</span></a></span></span></span></span><span>
+</span><span id="line-116"></span><span id="rawInsertExpr"><span class="annot"><span class="annottext">rawInsertExpr :: ReturningOption returningClause
+-&gt; AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; InsertExpr
+-&gt; Insert readEntity returningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#rawInsertExpr"><span class="hs-identifier hs-var hs-var">rawInsertExpr</span></a></span></span><span> </span><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithReturning"><span class="hs-identifier hs-var">WithReturning</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; InsertExpr -&gt; Insert readEntity returningClause
+forall writeEntity readEntity.
+AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; InsertExpr -&gt; Insert readEntity ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#InsertReturning"><span class="hs-identifier hs-var">InsertReturning</span></a></span><span>
+</span><span id="line-117"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html#rawInsertExpr"><span class="hs-identifier hs-var">rawInsertExpr</span></a></span><span> </span><span class="annot"><span class="annottext">ReturningOption returningClause
+</span><a href="Orville.PostgreSQL.Internal.ReturningOption.html#WithoutReturning"><span class="hs-identifier hs-var">WithoutReturning</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; InsertExpr -&gt; Insert readEntity returningClause
+forall writeEntity readEntity.
+AnnotatedSqlMarshaller writeEntity readEntity
+-&gt; InsertExpr -&gt; Insert readEntity NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#Insert"><span class="hs-identifier hs-var">Insert</span></a></span><span>
+</span><span id="line-118"></span></pre></body></html>

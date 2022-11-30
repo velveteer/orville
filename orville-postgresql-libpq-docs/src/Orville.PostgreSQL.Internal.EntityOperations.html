@@ -1,0 +1,685 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Internal.EntityOperations
+Copyright : Flipstone Technology Partners 2021
+License   : MIT
+-}</span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.EntityOperations</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertEntity"><span class="hs-identifier">insertEntity</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-8"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertAndReturnEntity"><span class="hs-identifier">insertAndReturnEntity</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-9"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertEntities"><span class="hs-identifier">insertEntities</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertAndReturnEntities"><span class="hs-identifier">insertAndReturnEntities</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateEntity"><span class="hs-identifier">updateEntity</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateAndReturnEntity"><span class="hs-identifier">updateAndReturnEntity</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateFields"><span class="hs-identifier">updateFields</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateFieldsAndReturnEntities"><span class="hs-identifier">updateFieldsAndReturnEntities</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteEntity"><span class="hs-identifier">deleteEntity</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteAndReturnEntity"><span class="hs-identifier">deleteAndReturnEntity</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteEntities"><span class="hs-identifier">deleteEntities</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteAndReturnEntities"><span class="hs-identifier">deleteAndReturnEntities</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findEntitiesBy"><span class="hs-identifier">findEntitiesBy</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-20"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findFirstEntityBy"><span class="hs-identifier">findFirstEntityBy</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findEntity"><span class="hs-identifier">findEntity</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Exception</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">throwIO</span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.IO.Class</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">MonadIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">liftIO</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(:|)</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">listToMaybe</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Delete.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Delete</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Delete</span></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Expr</span></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Insert.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Insert</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Insert</span></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.MonadOrville</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">MonadOrville</span></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.PrimaryKey</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">PrimaryKey</span></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RowCountExpectation.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RowCountExpectation</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RowCountExpectation</span></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Select.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Select</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Select</span></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.SelectOptions</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">SelectOptions</span></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.TableDefinition</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">TableDef</span></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableIdentifier.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.TableIdentifier</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">TableId</span></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Update.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Update</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Update</span></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">{- |
+  Inserts a entity into the specified table. Returns the number of rows
+  affected by the query.
+-}</span><span>
+</span><span id="line-46"></span><span id="local-6989586621679121711"><span id="local-6989586621679121712"><span id="local-6989586621679121713"><span id="local-6989586621679121714"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertEntity"><span class="hs-identifier hs-type">insertEntity</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-47"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121714"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-48"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121713"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121712"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121711"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-49"></span><span>  </span><span class="annot"><a href="#local-6989586621679121712"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-50"></span><span>  </span><span class="annot"><a href="#local-6989586621679121714"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span></span></span></span></span><span>
+</span><span id="line-51"></span><span id="insertEntity"><span class="annot"><span class="annottext">insertEntity :: TableDefinition key writeEntity readEntity -&gt; writeEntity -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertEntity"><span class="hs-identifier hs-var hs-var">insertEntity</span></a></span></span><span> </span><span id="local-6989586621679121710"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121710"><span class="hs-identifier hs-var">entityTable</span></a></span></span><span> </span><span id="local-6989586621679121709"><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121709"><span class="hs-identifier hs-var">entity</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-52"></span><span>  </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; m Int
+forall (m :: * -&gt; *) key writeEntity readEntity.
+MonadOrville m =&gt;
+TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertEntities"><span class="hs-identifier hs-var">insertEntities</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121710"><span class="hs-identifier hs-var">entityTable</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121709"><span class="hs-identifier hs-var">entity</span></a></span><span> </span><span class="annot"><span class="annottext">writeEntity -&gt; [writeEntity] -&gt; NonEmpty writeEntity
+forall a. a -&gt; [a] -&gt; NonEmpty a
+</span><span class="hs-operator hs-var">:|</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span class="hs-comment">{- |
+  Inserts a entity into the specified table, returning the data inserted into
+  the database.
+
+  You can use this function to obtain any column values filled in by the
+  database, such as auto-incrementing ids.
+-}</span><span>
+</span><span id="line-61"></span><span id="local-6989586621679121705"><span id="local-6989586621679121706"><span id="local-6989586621679121707"><span id="local-6989586621679121708"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertAndReturnEntity"><span class="hs-identifier hs-type">insertAndReturnEntity</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-62"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121708"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-63"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121707"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121706"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121705"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-64"></span><span>  </span><span class="annot"><a href="#local-6989586621679121706"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-65"></span><span>  </span><span class="annot"><a href="#local-6989586621679121708"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121705"><span class="hs-identifier hs-type">readEntity</span></a></span></span></span></span></span><span>
+</span><span id="line-66"></span><span id="insertAndReturnEntity"><span class="annot"><span class="annottext">insertAndReturnEntity :: TableDefinition key writeEntity readEntity
+-&gt; writeEntity -&gt; m readEntity
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertAndReturnEntity"><span class="hs-identifier hs-var hs-var">insertAndReturnEntity</span></a></span></span><span> </span><span id="local-6989586621679121704"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121704"><span class="hs-identifier hs-var">entityTable</span></a></span></span><span> </span><span id="local-6989586621679121703"><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121703"><span class="hs-identifier hs-var">entity</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-67"></span><span>  </span><span id="local-6989586621679121702"><span class="annot"><span class="annottext">[readEntity]
+</span><a href="#local-6989586621679121702"><span class="hs-identifier hs-var">returnedEntities</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; m [readEntity]
+forall (m :: * -&gt; *) key writeEntity readEntity.
+MonadOrville m =&gt;
+TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertAndReturnEntities"><span class="hs-identifier hs-var">insertAndReturnEntities</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121704"><span class="hs-identifier hs-var">entityTable</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121703"><span class="hs-identifier hs-var">entity</span></a></span><span> </span><span class="annot"><span class="annottext">writeEntity -&gt; [writeEntity] -&gt; NonEmpty writeEntity
+forall a. a -&gt; [a] -&gt; NonEmpty a
+</span><span class="hs-operator hs-var">:|</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span>  </span><span class="annot"><span class="annottext">String -&gt; [readEntity] -&gt; m readEntity
+forall (m :: * -&gt; *) a. MonadIO m =&gt; String -&gt; [a] -&gt; m a
+</span><a href="Orville.PostgreSQL.Internal.RowCountExpectation.html#expectExactlyOneRow"><span class="hs-identifier hs-var">RowCountExpectation.expectExactlyOneRow</span></a></span><span>
+</span><span id="line-70"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;insertAndReturnEntity RETURNING clause&quot;</span></span><span>
+</span><span id="line-71"></span><span>    </span><span class="annot"><span class="annottext">[readEntity]
+</span><a href="#local-6989586621679121702"><span class="hs-identifier hs-var">returnedEntities</span></a></span><span>
+</span><span id="line-72"></span><span>
+</span><span id="line-73"></span><span class="hs-comment">{- |
+  Inserts a non-empty list of entities into the specified table. Returns the
+  number of rows affected by the query.
+-}</span><span>
+</span><span id="line-77"></span><span id="local-6989586621679121896"><span id="local-6989586621679121897"><span id="local-6989586621679121898"><span id="local-6989586621679121900"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertEntities"><span class="hs-identifier hs-type">insertEntities</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-78"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121900"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-79"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121898"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121897"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121896"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-80"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679121897"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-81"></span><span>  </span><span class="annot"><a href="#local-6989586621679121900"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span></span></span></span></span><span>
+</span><span id="line-82"></span><span id="insertEntities"><span class="annot"><span class="annottext">insertEntities :: TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertEntities"><span class="hs-identifier hs-var hs-var">insertEntities</span></a></span></span><span> </span><span id="local-6989586621679121700"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121700"><span class="hs-identifier hs-var">tableDef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-83"></span><span>  </span><span class="annot"><span class="annottext">Insert readEntity NoReturningClause -&gt; m Int
+forall (m :: * -&gt; *) readEntity.
+MonadOrville m =&gt;
+Insert readEntity NoReturningClause -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#executeInsert"><span class="hs-identifier hs-var">Insert.executeInsert</span></a></span><span> </span><span class="annot"><span class="annottext">(Insert readEntity NoReturningClause -&gt; m Int)
+-&gt; (NonEmpty writeEntity -&gt; Insert readEntity NoReturningClause)
+-&gt; NonEmpty writeEntity
+-&gt; m Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; Insert readEntity NoReturningClause
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; Insert readEntity NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#insertToTable"><span class="hs-identifier hs-var">Insert.insertToTable</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121700"><span class="hs-identifier hs-var">tableDef</span></a></span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span class="hs-comment">{- |
+  Inserts a non-empty list of entities into the specified table, returning the data that
+  was inserted into the database.
+
+  You can use this function to obtain any column values filled in by the
+  database, such as auto-incrementing ids.
+-}</span><span>
+</span><span id="line-92"></span><span id="local-6989586621679121886"><span id="local-6989586621679121887"><span id="local-6989586621679121888"><span id="local-6989586621679121889"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertAndReturnEntities"><span class="hs-identifier hs-type">insertAndReturnEntities</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-93"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121889"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-94"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121888"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121887"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121886"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-95"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679121887"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-96"></span><span>  </span><span class="annot"><a href="#local-6989586621679121889"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679121886"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">]</span></span></span></span></span><span>
+</span><span id="line-97"></span><span id="insertAndReturnEntities"><span class="annot"><span class="annottext">insertAndReturnEntities :: TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#insertAndReturnEntities"><span class="hs-identifier hs-var hs-var">insertAndReturnEntities</span></a></span></span><span> </span><span id="local-6989586621679121696"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121696"><span class="hs-identifier hs-var">tableDef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-98"></span><span>  </span><span class="annot"><span class="annottext">Insert readEntity ReturningClause -&gt; m [readEntity]
+forall (m :: * -&gt; *) readEntity.
+MonadOrville m =&gt;
+Insert readEntity ReturningClause -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#executeInsertReturnEntities"><span class="hs-identifier hs-var">Insert.executeInsertReturnEntities</span></a></span><span> </span><span class="annot"><span class="annottext">(Insert readEntity ReturningClause -&gt; m [readEntity])
+-&gt; (NonEmpty writeEntity -&gt; Insert readEntity ReturningClause)
+-&gt; NonEmpty writeEntity
+-&gt; m [readEntity]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; Insert readEntity ReturningClause
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; NonEmpty writeEntity -&gt; Insert readEntity ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Insert.html#insertToTableReturning"><span class="hs-identifier hs-var">Insert.insertToTableReturning</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121696"><span class="hs-identifier hs-var">tableDef</span></a></span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span class="hs-comment">{- |
+  Updates the row with the given key in with the data given by 'writeEntity'.
+  Returns the number of rows affected by the query.
+-}</span><span>
+</span><span id="line-104"></span><span id="local-6989586621679121690"><span id="local-6989586621679121691"><span id="local-6989586621679121692"><span id="local-6989586621679121693"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateEntity"><span class="hs-identifier hs-type">updateEntity</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-105"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121693"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-106"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">TableDef.HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121692"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121691"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121690"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-107"></span><span>  </span><span class="annot"><a href="#local-6989586621679121692"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-108"></span><span>  </span><span class="annot"><a href="#local-6989586621679121691"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-109"></span><span>  </span><span class="annot"><a href="#local-6989586621679121693"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span></span></span></span></span><span>
+</span><span id="line-110"></span><span id="updateEntity"><span class="annot"><span class="annottext">updateEntity :: TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key -&gt; writeEntity -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateEntity"><span class="hs-identifier hs-var hs-var">updateEntity</span></a></span></span><span> </span><span id="local-6989586621679121689"><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121689"><span class="hs-identifier hs-var">tableDef</span></a></span></span><span> </span><span id="local-6989586621679121688"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121688"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679121687"><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121687"><span class="hs-identifier hs-var">writeEntity</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-111"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key
+-&gt; writeEntity
+-&gt; Maybe (Update readEntity NoReturningClause)
+forall key writeEntity readEntity.
+TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key
+-&gt; writeEntity
+-&gt; Maybe (Update readEntity NoReturningClause)
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToTable"><span class="hs-identifier hs-var">Update.updateToTable</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121689"><span class="hs-identifier hs-var">tableDef</span></a></span><span> </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121688"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121687"><span class="hs-identifier hs-var">writeEntity</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-112"></span><span>    </span><span class="annot"><span class="annottext">Maybe (Update readEntity NoReturningClause)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-113"></span><span>      </span><span class="annot"><span class="annottext">IO Int -&gt; m Int
+forall (m :: * -&gt; *) a. MonadIO m =&gt; IO a -&gt; m a
+</span><span class="hs-identifier hs-var">liftIO</span></span><span> </span><span class="annot"><span class="annottext">(IO Int -&gt; m Int)
+-&gt; (TableDefinition (HasKey key) writeEntity readEntity -&gt; IO Int)
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; m Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">EmptyUpdateError -&gt; IO Int
+forall e a. Exception e =&gt; e -&gt; IO a
+</span><span class="hs-identifier hs-var">throwIO</span></span><span> </span><span class="annot"><span class="annottext">(EmptyUpdateError -&gt; IO Int)
+-&gt; (TableDefinition (HasKey key) writeEntity readEntity
+    -&gt; EmptyUpdateError)
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; IO Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">TableIdentifier -&gt; EmptyUpdateError
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#EmptyUpdateError"><span class="hs-identifier hs-var">EmptyUpdateError</span></a></span><span> </span><span class="annot"><span class="annottext">(TableIdentifier -&gt; EmptyUpdateError)
+-&gt; (TableDefinition (HasKey key) writeEntity readEntity
+    -&gt; TableIdentifier)
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; EmptyUpdateError
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; TableIdentifier
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity -&gt; TableIdentifier
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tableIdentifier"><span class="hs-identifier hs-var">TableDef.tableIdentifier</span></a></span><span> </span><span class="annot"><span class="annottext">(TableDefinition (HasKey key) writeEntity readEntity -&gt; m Int)
+-&gt; TableDefinition (HasKey key) writeEntity readEntity -&gt; m Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121689"><span class="hs-identifier hs-var">tableDef</span></a></span><span>
+</span><span id="line-114"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679121683"><span class="annot"><span class="annottext">Update readEntity NoReturningClause
+</span><a href="#local-6989586621679121683"><span class="hs-identifier hs-var">update</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-115"></span><span>      </span><span class="annot"><span class="annottext">Update readEntity NoReturningClause -&gt; m Int
+forall (m :: * -&gt; *) readEntity returningClause.
+MonadOrville m =&gt;
+Update readEntity returningClause -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdate"><span class="hs-identifier hs-var">Update.executeUpdate</span></a></span><span> </span><span class="annot"><span class="annottext">Update readEntity NoReturningClause
+</span><a href="#local-6989586621679121683"><span class="hs-identifier hs-var">update</span></a></span><span>
+</span><span id="line-116"></span><span>
+</span><span id="line-117"></span><span class="hs-comment">{- |
+  Updates the row with the given key in with the data given by 'writeEntity',
+  returning updated row from the database. If no row matches the given key,
+  'Nothing' will be returned.
+
+  You can use this function to obtain any column values computer by the database
+  during update, including columns with triggers attached to them.
+-}</span><span>
+</span><span id="line-125"></span><span id="local-6989586621679121678"><span id="local-6989586621679121679"><span id="local-6989586621679121680"><span id="local-6989586621679121681"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateAndReturnEntity"><span class="hs-identifier hs-type">updateAndReturnEntity</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-126"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121681"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-127"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">TableDef.HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121680"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121679"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121678"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-128"></span><span>  </span><span class="annot"><a href="#local-6989586621679121680"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-129"></span><span>  </span><span class="annot"><a href="#local-6989586621679121679"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-130"></span><span>  </span><span class="annot"><a href="#local-6989586621679121681"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679121678"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">)</span></span></span></span></span><span>
+</span><span id="line-131"></span><span id="updateAndReturnEntity"><span class="annot"><span class="annottext">updateAndReturnEntity :: TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key -&gt; writeEntity -&gt; m (Maybe readEntity)
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateAndReturnEntity"><span class="hs-identifier hs-var hs-var">updateAndReturnEntity</span></a></span></span><span> </span><span id="local-6989586621679121677"><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121677"><span class="hs-identifier hs-var">tableDef</span></a></span></span><span> </span><span id="local-6989586621679121676"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121676"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679121675"><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121675"><span class="hs-identifier hs-var">writeEntity</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-132"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key -&gt; writeEntity -&gt; Maybe (Update readEntity ReturningClause)
+forall key writeEntity readEntity.
+TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key -&gt; writeEntity -&gt; Maybe (Update readEntity ReturningClause)
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableReturning"><span class="hs-identifier hs-var">Update.updateToTableReturning</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121677"><span class="hs-identifier hs-var">tableDef</span></a></span><span> </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121676"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">writeEntity
+</span><a href="#local-6989586621679121675"><span class="hs-identifier hs-var">writeEntity</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-133"></span><span>    </span><span class="annot"><span class="annottext">Maybe (Update readEntity ReturningClause)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-134"></span><span>      </span><span class="annot"><span class="annottext">IO (Maybe readEntity) -&gt; m (Maybe readEntity)
+forall (m :: * -&gt; *) a. MonadIO m =&gt; IO a -&gt; m a
+</span><span class="hs-identifier hs-var">liftIO</span></span><span> </span><span class="annot"><span class="annottext">(IO (Maybe readEntity) -&gt; m (Maybe readEntity))
+-&gt; (TableDefinition (HasKey key) writeEntity readEntity
+    -&gt; IO (Maybe readEntity))
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; m (Maybe readEntity)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">EmptyUpdateError -&gt; IO (Maybe readEntity)
+forall e a. Exception e =&gt; e -&gt; IO a
+</span><span class="hs-identifier hs-var">throwIO</span></span><span> </span><span class="annot"><span class="annottext">(EmptyUpdateError -&gt; IO (Maybe readEntity))
+-&gt; (TableDefinition (HasKey key) writeEntity readEntity
+    -&gt; EmptyUpdateError)
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; IO (Maybe readEntity)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">TableIdentifier -&gt; EmptyUpdateError
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#EmptyUpdateError"><span class="hs-identifier hs-var">EmptyUpdateError</span></a></span><span> </span><span class="annot"><span class="annottext">(TableIdentifier -&gt; EmptyUpdateError)
+-&gt; (TableDefinition (HasKey key) writeEntity readEntity
+    -&gt; TableIdentifier)
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; EmptyUpdateError
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; TableIdentifier
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity -&gt; TableIdentifier
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tableIdentifier"><span class="hs-identifier hs-var">TableDef.tableIdentifier</span></a></span><span> </span><span class="annot"><span class="annottext">(TableDefinition (HasKey key) writeEntity readEntity
+ -&gt; m (Maybe readEntity))
+-&gt; TableDefinition (HasKey key) writeEntity readEntity
+-&gt; m (Maybe readEntity)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121677"><span class="hs-identifier hs-var">tableDef</span></a></span><span>
+</span><span id="line-135"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679121673"><span class="annot"><span class="annottext">Update readEntity ReturningClause
+</span><a href="#local-6989586621679121673"><span class="hs-identifier hs-var">update</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-136"></span><span>      </span><span id="local-6989586621679121672"><span class="annot"><span class="annottext">[readEntity]
+</span><a href="#local-6989586621679121672"><span class="hs-identifier hs-var">returnedEntities</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Update readEntity ReturningClause -&gt; m [readEntity]
+forall (m :: * -&gt; *) readEntity.
+MonadOrville m =&gt;
+Update readEntity ReturningClause -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdateReturnEntities"><span class="hs-identifier hs-var">Update.executeUpdateReturnEntities</span></a></span><span> </span><span class="annot"><span class="annottext">Update readEntity ReturningClause
+</span><a href="#local-6989586621679121673"><span class="hs-identifier hs-var">update</span></a></span><span>
+</span><span id="line-137"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; [readEntity] -&gt; m (Maybe readEntity)
+forall (m :: * -&gt; *) a. MonadIO m =&gt; String -&gt; [a] -&gt; m (Maybe a)
+</span><a href="Orville.PostgreSQL.Internal.RowCountExpectation.html#expectAtMostOneRow"><span class="hs-identifier hs-var">RowCountExpectation.expectAtMostOneRow</span></a></span><span>
+</span><span id="line-138"></span><span>        </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;updateAndReturnEntity RETURNING clause&quot;</span></span><span>
+</span><span id="line-139"></span><span>        </span><span class="annot"><span class="annottext">[readEntity]
+</span><a href="#local-6989586621679121672"><span class="hs-identifier hs-var">returnedEntities</span></a></span><span>
+</span><span id="line-140"></span><span>
+</span><span id="line-141"></span><span class="hs-comment">{- |
+  Applies the given 'Expr.SetClause's to the rows in the table that match the
+  given where condition. The easiest way to construct a 'Expr.SetClause' is
+  via the 'Orville.Postgresql.setField' function (also exported as @.:=@).
+  Returns the number of rows affected by the query.
+-}</span><span>
+</span><span id="line-147"></span><span id="local-6989586621679121666"><span id="local-6989586621679121667"><span id="local-6989586621679121668"><span id="local-6989586621679121669"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateFields"><span class="hs-identifier hs-type">updateFields</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-148"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121669"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-149"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">TableDef.HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121668"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121667"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121666"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-150"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-type">Expr.SetClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-151"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">SelectOptions.WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-152"></span><span>  </span><span class="annot"><a href="#local-6989586621679121669"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span></span></span></span></span><span>
+</span><span id="line-153"></span><span id="updateFields"><span class="annot"><span class="annottext">updateFields :: TableDefinition (HasKey key) writeEntity readEntity
+-&gt; NonEmpty SetClause -&gt; Maybe WhereCondition -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateFields"><span class="hs-identifier hs-var hs-var">updateFields</span></a></span></span><span> </span><span id="local-6989586621679121665"><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121665"><span class="hs-identifier hs-var">tableDef</span></a></span></span><span> </span><span id="local-6989586621679121664"><span class="annot"><span class="annottext">NonEmpty SetClause
+</span><a href="#local-6989586621679121664"><span class="hs-identifier hs-var">setClauses</span></a></span></span><span> </span><span id="local-6989586621679121663"><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121663"><span class="hs-identifier hs-var">mbWhereCondition</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-154"></span><span>  </span><span class="annot"><span class="annottext">Update readEntity NoReturningClause -&gt; m Int
+forall (m :: * -&gt; *) readEntity returningClause.
+MonadOrville m =&gt;
+Update readEntity returningClause -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdate"><span class="hs-identifier hs-var">Update.executeUpdate</span></a></span><span> </span><span class="annot"><span class="annottext">(Update readEntity NoReturningClause -&gt; m Int)
+-&gt; Update readEntity NoReturningClause -&gt; m Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-155"></span><span>    </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity NoReturningClause
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableFields"><span class="hs-identifier hs-var">Update.updateToTableFields</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121665"><span class="hs-identifier hs-var">tableDef</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty SetClause
+</span><a href="#local-6989586621679121664"><span class="hs-identifier hs-var">setClauses</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121663"><span class="hs-identifier hs-var">mbWhereCondition</span></a></span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span class="hs-comment">{- |
+  Like 'updateFields', but uses a @RETURNING@ clause to return the updated
+  version of any rows that were affected by the update.
+-}</span><span>
+</span><span id="line-161"></span><span id="local-6989586621679121658"><span id="local-6989586621679121659"><span id="local-6989586621679121660"><span id="local-6989586621679121661"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateFieldsAndReturnEntities"><span class="hs-identifier hs-type">updateFieldsAndReturnEntities</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-162"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121661"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-163"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">TableDef.HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121660"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121659"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121658"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-164"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-type">Expr.SetClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-165"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">SelectOptions.WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-166"></span><span>  </span><span class="annot"><a href="#local-6989586621679121661"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679121658"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">]</span></span></span></span></span><span>
+</span><span id="line-167"></span><span id="updateFieldsAndReturnEntities"><span class="annot"><span class="annottext">updateFieldsAndReturnEntities :: TableDefinition (HasKey key) writeEntity readEntity
+-&gt; NonEmpty SetClause -&gt; Maybe WhereCondition -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#updateFieldsAndReturnEntities"><span class="hs-identifier hs-var hs-var">updateFieldsAndReturnEntities</span></a></span></span><span> </span><span id="local-6989586621679121657"><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121657"><span class="hs-identifier hs-var">tableDef</span></a></span></span><span> </span><span id="local-6989586621679121656"><span class="annot"><span class="annottext">NonEmpty SetClause
+</span><a href="#local-6989586621679121656"><span class="hs-identifier hs-var">setClauses</span></a></span></span><span> </span><span id="local-6989586621679121655"><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121655"><span class="hs-identifier hs-var">mbWhereCondition</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-168"></span><span>  </span><span class="annot"><span class="annottext">Update readEntity ReturningClause -&gt; m [readEntity]
+forall (m :: * -&gt; *) readEntity.
+MonadOrville m =&gt;
+Update readEntity ReturningClause -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.Update.html#executeUpdateReturnEntities"><span class="hs-identifier hs-var">Update.executeUpdateReturnEntities</span></a></span><span> </span><span class="annot"><span class="annottext">(Update readEntity ReturningClause -&gt; m [readEntity])
+-&gt; Update readEntity ReturningClause -&gt; m [readEntity]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-169"></span><span>    </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity ReturningClause
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; NonEmpty SetClause
+-&gt; Maybe WhereCondition
+-&gt; Update readEntity ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Update.html#updateToTableFieldsReturning"><span class="hs-identifier hs-var">Update.updateToTableFieldsReturning</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121657"><span class="hs-identifier hs-var">tableDef</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty SetClause
+</span><a href="#local-6989586621679121656"><span class="hs-identifier hs-var">setClauses</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121655"><span class="hs-identifier hs-var">mbWhereCondition</span></a></span><span>
+</span><span id="line-170"></span><span>
+</span><span id="line-171"></span><span class="hs-comment">{- |
+  Deletes the row with the given key. Returns the number of rows affected
+  by the query.
+-}</span><span>
+</span><span id="line-175"></span><span id="local-6989586621679121650"><span id="local-6989586621679121651"><span id="local-6989586621679121652"><span id="local-6989586621679121653"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteEntity"><span class="hs-identifier hs-type">deleteEntity</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-176"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121653"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-177"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">TableDef.HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121652"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121651"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121650"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-178"></span><span>  </span><span class="annot"><a href="#local-6989586621679121652"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-179"></span><span>  </span><span class="annot"><a href="#local-6989586621679121653"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span></span></span></span></span><span>
+</span><span id="line-180"></span><span id="deleteEntity"><span class="annot"><span class="annottext">deleteEntity :: TableDefinition (HasKey key) writeEntity readEntity -&gt; key -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteEntity"><span class="hs-identifier hs-var hs-var">deleteEntity</span></a></span></span><span> </span><span id="local-6989586621679121649"><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121649"><span class="hs-identifier hs-var">entityTable</span></a></span></span><span> </span><span id="local-6989586621679121648"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121648"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-181"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679121647"><span class="annot"><span class="annottext">primaryKeyCondition :: WhereCondition
+</span><a href="#local-6989586621679121647"><span class="hs-identifier hs-var hs-var">primaryKeyCondition</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-182"></span><span>        </span><span class="annot"><span class="annottext">PrimaryKey key -&gt; key -&gt; WhereCondition
+forall key. PrimaryKey key -&gt; key -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEquals"><span class="hs-identifier hs-var">PrimaryKey.primaryKeyEquals</span></a></span><span>
+</span><span id="line-183"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; PrimaryKey key
+forall key writeEntity readEntity.
+TableDefinition (HasKey key) writeEntity readEntity
+-&gt; PrimaryKey key
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tablePrimaryKey"><span class="hs-identifier hs-var">TableDef.tablePrimaryKey</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121649"><span class="hs-identifier hs-var">entityTable</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-184"></span><span>          </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121648"><span class="hs-identifier hs-var">key</span></a></span><span>
+</span><span id="line-185"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Delete readEntity NoReturningClause -&gt; m Int
+forall (m :: * -&gt; *) readEntity.
+MonadOrville m =&gt;
+Delete readEntity NoReturningClause -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.Delete.html#executeDelete"><span class="hs-identifier hs-var">Delete.executeDelete</span></a></span><span> </span><span class="annot"><span class="annottext">(Delete readEntity NoReturningClause -&gt; m Int)
+-&gt; Delete readEntity NoReturningClause -&gt; m Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-186"></span><span>        </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; Delete readEntity NoReturningClause
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; Delete readEntity NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Delete.html#deleteFromTable"><span class="hs-identifier hs-var">Delete.deleteFromTable</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121649"><span class="hs-identifier hs-var">entityTable</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">WhereCondition -&gt; Maybe WhereCondition
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679121647"><span class="hs-identifier hs-var">primaryKeyCondition</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-187"></span><span>
+</span><span id="line-188"></span><span class="hs-comment">{- |
+  Deletes the row with the given key, returning the row that was deleted.
+  If no row matches the given key, 'Nothing' is returned.
+-}</span><span>
+</span><span id="line-192"></span><span id="local-6989586621679121639"><span id="local-6989586621679121640"><span id="local-6989586621679121641"><span id="local-6989586621679121642"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteAndReturnEntity"><span class="hs-identifier hs-type">deleteAndReturnEntity</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-193"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121642"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-194"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">TableDef.HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121641"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121640"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121639"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-195"></span><span>  </span><span class="annot"><a href="#local-6989586621679121641"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-196"></span><span>  </span><span class="annot"><a href="#local-6989586621679121642"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679121639"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">)</span></span></span></span></span><span>
+</span><span id="line-197"></span><span id="deleteAndReturnEntity"><span class="annot"><span class="annottext">deleteAndReturnEntity :: TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key -&gt; m (Maybe readEntity)
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteAndReturnEntity"><span class="hs-identifier hs-var hs-var">deleteAndReturnEntity</span></a></span></span><span> </span><span id="local-6989586621679121638"><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121638"><span class="hs-identifier hs-var">entityTable</span></a></span></span><span> </span><span id="local-6989586621679121637"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121637"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-198"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679121636"><span class="annot"><span class="annottext">primaryKeyCondition :: WhereCondition
+</span><a href="#local-6989586621679121636"><span class="hs-identifier hs-var hs-var">primaryKeyCondition</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-199"></span><span>        </span><span class="annot"><span class="annottext">PrimaryKey key -&gt; key -&gt; WhereCondition
+forall key. PrimaryKey key -&gt; key -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEquals"><span class="hs-identifier hs-var">PrimaryKey.primaryKeyEquals</span></a></span><span>
+</span><span id="line-200"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; PrimaryKey key
+forall key writeEntity readEntity.
+TableDefinition (HasKey key) writeEntity readEntity
+-&gt; PrimaryKey key
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tablePrimaryKey"><span class="hs-identifier hs-var">TableDef.tablePrimaryKey</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121638"><span class="hs-identifier hs-var">entityTable</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-201"></span><span>          </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121637"><span class="hs-identifier hs-var">key</span></a></span><span>
+</span><span id="line-202"></span><span>
+</span><span id="line-203"></span><span>  </span><span id="local-6989586621679121635"><span class="annot"><span class="annottext">[readEntity]
+</span><a href="#local-6989586621679121635"><span class="hs-identifier hs-var">returnedEntities</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; m [readEntity]
+forall (m :: * -&gt; *) key writeEntity readEntity.
+MonadOrville m =&gt;
+TableDefinition key writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteAndReturnEntities"><span class="hs-identifier hs-var">deleteAndReturnEntities</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121638"><span class="hs-identifier hs-var">entityTable</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">WhereCondition -&gt; Maybe WhereCondition
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679121636"><span class="hs-identifier hs-var">primaryKeyCondition</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-204"></span><span>
+</span><span id="line-205"></span><span>  </span><span class="annot"><span class="annottext">String -&gt; [readEntity] -&gt; m (Maybe readEntity)
+forall (m :: * -&gt; *) a. MonadIO m =&gt; String -&gt; [a] -&gt; m (Maybe a)
+</span><a href="Orville.PostgreSQL.Internal.RowCountExpectation.html#expectAtMostOneRow"><span class="hs-identifier hs-var">RowCountExpectation.expectAtMostOneRow</span></a></span><span>
+</span><span id="line-206"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;deleteAndReturnEntity RETURNING clause&quot;</span></span><span>
+</span><span id="line-207"></span><span>    </span><span class="annot"><span class="annottext">[readEntity]
+</span><a href="#local-6989586621679121635"><span class="hs-identifier hs-var">returnedEntities</span></a></span><span>
+</span><span id="line-208"></span><span>
+</span><span id="line-209"></span><span class="hs-comment">{- |
+  Deletes all rows in the given table that match the where condition. Returns
+  the number of rows affected by the query.
+-}</span><span>
+</span><span id="line-213"></span><span id="local-6989586621679121631"><span id="local-6989586621679121632"><span id="local-6989586621679121633"><span id="local-6989586621679121634"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteEntities"><span class="hs-identifier hs-type">deleteEntities</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-214"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121634"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-215"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121633"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121632"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121631"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-216"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">SelectOptions.WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-217"></span><span>  </span><span class="annot"><a href="#local-6989586621679121634"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span></span></span></span></span><span>
+</span><span id="line-218"></span><span id="deleteEntities"><span class="annot"><span class="annottext">deleteEntities :: TableDefinition key writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteEntities"><span class="hs-identifier hs-var hs-var">deleteEntities</span></a></span></span><span> </span><span id="local-6989586621679121630"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121630"><span class="hs-identifier hs-var">entityTable</span></a></span></span><span> </span><span id="local-6989586621679121629"><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121629"><span class="hs-identifier hs-var">whereCondition</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-219"></span><span>  </span><span class="annot"><span class="annottext">Delete readEntity NoReturningClause -&gt; m Int
+forall (m :: * -&gt; *) readEntity.
+MonadOrville m =&gt;
+Delete readEntity NoReturningClause -&gt; m Int
+</span><a href="Orville.PostgreSQL.Internal.Delete.html#executeDelete"><span class="hs-identifier hs-var">Delete.executeDelete</span></a></span><span> </span><span class="annot"><span class="annottext">(Delete readEntity NoReturningClause -&gt; m Int)
+-&gt; Delete readEntity NoReturningClause -&gt; m Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-220"></span><span>    </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; Delete readEntity NoReturningClause
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; Delete readEntity NoReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Delete.html#deleteFromTable"><span class="hs-identifier hs-var">Delete.deleteFromTable</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121630"><span class="hs-identifier hs-var">entityTable</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121629"><span class="hs-identifier hs-var">whereCondition</span></a></span><span>
+</span><span id="line-221"></span><span>
+</span><span id="line-222"></span><span class="hs-comment">{- |
+  Deletes all rows in the given table that match the where condition, returning
+  the rows that were deleted.
+-}</span><span>
+</span><span id="line-226"></span><span id="local-6989586621679121783"><span id="local-6989586621679121784"><span id="local-6989586621679121785"><span id="local-6989586621679121786"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteAndReturnEntities"><span class="hs-identifier hs-type">deleteAndReturnEntities</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-227"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121786"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-228"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121785"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121784"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121783"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-229"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">SelectOptions.WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-230"></span><span>  </span><span class="annot"><a href="#local-6989586621679121786"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679121783"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">]</span></span></span></span></span><span>
+</span><span id="line-231"></span><span id="deleteAndReturnEntities"><span class="annot"><span class="annottext">deleteAndReturnEntities :: TableDefinition key writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#deleteAndReturnEntities"><span class="hs-identifier hs-var hs-var">deleteAndReturnEntities</span></a></span></span><span> </span><span id="local-6989586621679121628"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121628"><span class="hs-identifier hs-var">entityTable</span></a></span></span><span> </span><span id="local-6989586621679121627"><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121627"><span class="hs-identifier hs-var">whereCondition</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-232"></span><span>  </span><span class="annot"><span class="annottext">Delete readEntity ReturningClause -&gt; m [readEntity]
+forall (m :: * -&gt; *) readEntity.
+MonadOrville m =&gt;
+Delete readEntity ReturningClause -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.Delete.html#executeDeleteReturnEntities"><span class="hs-identifier hs-var">Delete.executeDeleteReturnEntities</span></a></span><span> </span><span class="annot"><span class="annottext">(Delete readEntity ReturningClause -&gt; m [readEntity])
+-&gt; Delete readEntity ReturningClause -&gt; m [readEntity]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-233"></span><span>    </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; Delete readEntity ReturningClause
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; Maybe WhereCondition -&gt; Delete readEntity ReturningClause
+</span><a href="Orville.PostgreSQL.Internal.Delete.html#deleteFromTableReturning"><span class="hs-identifier hs-var">Delete.deleteFromTableReturning</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121628"><span class="hs-identifier hs-var">entityTable</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe WhereCondition
+</span><a href="#local-6989586621679121627"><span class="hs-identifier hs-var">whereCondition</span></a></span><span>
+</span><span id="line-234"></span><span>
+</span><span id="line-235"></span><span class="hs-comment">{- |
+  Finds all the entities in the given table according to the specified
+  'SelectOptions.SelectOptions', which may include where conditions to
+  match, ordering specifications, etc.
+-}</span><span>
+</span><span id="line-240"></span><span id="local-6989586621679121747"><span id="local-6989586621679121748"><span id="local-6989586621679121749"><span id="local-6989586621679121750"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findEntitiesBy"><span class="hs-identifier hs-type">findEntitiesBy</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-241"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121750"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-242"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121749"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121748"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121747"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-243"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.SelectOptions.html#SelectOptions"><span class="hs-identifier hs-type">SelectOptions.SelectOptions</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-244"></span><span>  </span><span class="annot"><a href="#local-6989586621679121750"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679121747"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">]</span></span></span></span></span><span>
+</span><span id="line-245"></span><span id="findEntitiesBy"><span class="annot"><span class="annottext">findEntitiesBy :: TableDefinition key writeEntity readEntity
+-&gt; SelectOptions -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findEntitiesBy"><span class="hs-identifier hs-var hs-var">findEntitiesBy</span></a></span></span><span> </span><span id="local-6989586621679121624"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121624"><span class="hs-identifier hs-var">entityTable</span></a></span></span><span> </span><span id="local-6989586621679121623"><span class="annot"><span class="annottext">SelectOptions
+</span><a href="#local-6989586621679121623"><span class="hs-identifier hs-var">selectOptions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-246"></span><span>  </span><span class="annot"><span class="annottext">Select readEntity -&gt; m [readEntity]
+forall (m :: * -&gt; *) row. MonadOrville m =&gt; Select row -&gt; m [row]
+</span><a href="Orville.PostgreSQL.Internal.Select.html#executeSelect"><span class="hs-identifier hs-var">Select.executeSelect</span></a></span><span> </span><span class="annot"><span class="annottext">(Select readEntity -&gt; m [readEntity])
+-&gt; Select readEntity -&gt; m [readEntity]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-247"></span><span>    </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; SelectOptions -&gt; Select readEntity
+forall key writeEntity readEntity.
+TableDefinition key writeEntity readEntity
+-&gt; SelectOptions -&gt; Select readEntity
+</span><a href="Orville.PostgreSQL.Internal.Select.html#selectTable"><span class="hs-identifier hs-var">Select.selectTable</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121624"><span class="hs-identifier hs-var">entityTable</span></a></span><span> </span><span class="annot"><span class="annottext">SelectOptions
+</span><a href="#local-6989586621679121623"><span class="hs-identifier hs-var">selectOptions</span></a></span><span>
+</span><span id="line-248"></span><span>
+</span><span id="line-249"></span><span class="hs-comment">{- |
+  Like 'findEntitiesBy, but adds a 'LIMIT 1' to the query and then returns
+  the first item from the list. Usually when you use this you will want to
+  provide an order by clause in the 'SelectOptions.SelectOptions' because the
+  database will not guarantee ordering.
+-}</span><span>
+</span><span id="line-255"></span><span id="local-6989586621679121738"><span id="local-6989586621679121739"><span id="local-6989586621679121740"><span id="local-6989586621679121741"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findFirstEntityBy"><span class="hs-identifier hs-type">findFirstEntityBy</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-256"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121741"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-257"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121740"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121739"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121738"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-258"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.SelectOptions.html#SelectOptions"><span class="hs-identifier hs-type">SelectOptions.SelectOptions</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-259"></span><span>  </span><span class="annot"><a href="#local-6989586621679121741"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679121738"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">)</span></span></span></span></span><span>
+</span><span id="line-260"></span><span id="findFirstEntityBy"><span class="annot"><span class="annottext">findFirstEntityBy :: TableDefinition key writeEntity readEntity
+-&gt; SelectOptions -&gt; m (Maybe readEntity)
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findFirstEntityBy"><span class="hs-identifier hs-var hs-var">findFirstEntityBy</span></a></span></span><span> </span><span id="local-6989586621679121620"><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121620"><span class="hs-identifier hs-var">entityTable</span></a></span></span><span> </span><span id="local-6989586621679121619"><span class="annot"><span class="annottext">SelectOptions
+</span><a href="#local-6989586621679121619"><span class="hs-identifier hs-var">selectOptions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-261"></span><span>  </span><span class="annot"><span class="annottext">[readEntity] -&gt; Maybe readEntity
+forall a. [a] -&gt; Maybe a
+</span><span class="hs-identifier hs-var">listToMaybe</span></span><span>
+</span><span id="line-262"></span><span>    </span><span class="annot"><span class="annottext">([readEntity] -&gt; Maybe readEntity)
+-&gt; m [readEntity] -&gt; m (Maybe readEntity)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+-&gt; SelectOptions -&gt; m [readEntity]
+forall (m :: * -&gt; *) key writeEntity readEntity.
+MonadOrville m =&gt;
+TableDefinition key writeEntity readEntity
+-&gt; SelectOptions -&gt; m [readEntity]
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findEntitiesBy"><span class="hs-identifier hs-var">findEntitiesBy</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition key writeEntity readEntity
+</span><a href="#local-6989586621679121620"><span class="hs-identifier hs-var">entityTable</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; SelectOptions
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.SelectOptions.html#limit"><span class="hs-identifier hs-var">SelectOptions.limit</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">SelectOptions -&gt; SelectOptions -&gt; SelectOptions
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">SelectOptions
+</span><a href="#local-6989586621679121619"><span class="hs-identifier hs-var">selectOptions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-263"></span><span>
+</span><span id="line-264"></span><span class="hs-comment">{- |
+  Finds a single entity by the table's primary key value.
+-}</span><span>
+</span><span id="line-267"></span><span id="local-6989586621679121613"><span id="local-6989586621679121614"><span id="local-6989586621679121615"><span id="local-6989586621679121616"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findEntity"><span class="hs-identifier hs-type">findEntity</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-268"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.MonadOrville.html#MonadOrville"><span class="hs-identifier hs-type">MonadOrville.MonadOrville</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121616"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-269"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#TableDefinition"><span class="hs-identifier hs-type">TableDef.TableDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableDefinition.html#HasKey"><span class="hs-identifier hs-type">TableDef.HasKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121615"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679121614"><span class="hs-identifier hs-type">writeEntity</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679121613"><span class="hs-identifier hs-type">readEntity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-270"></span><span>  </span><span class="annot"><a href="#local-6989586621679121615"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-271"></span><span>  </span><span class="annot"><a href="#local-6989586621679121616"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679121613"><span class="hs-identifier hs-type">readEntity</span></a></span><span class="hs-special">)</span></span></span></span></span><span>
+</span><span id="line-272"></span><span id="findEntity"><span class="annot"><span class="annottext">findEntity :: TableDefinition (HasKey key) writeEntity readEntity
+-&gt; key -&gt; m (Maybe readEntity)
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findEntity"><span class="hs-identifier hs-var hs-var">findEntity</span></a></span></span><span> </span><span id="local-6989586621679121612"><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121612"><span class="hs-identifier hs-var">entityTable</span></a></span></span><span> </span><span id="local-6989586621679121611"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121611"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-273"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679121610"><span class="annot"><span class="annottext">primaryKeyCondition :: WhereCondition
+</span><a href="#local-6989586621679121610"><span class="hs-identifier hs-var hs-var">primaryKeyCondition</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-274"></span><span>        </span><span class="annot"><span class="annottext">PrimaryKey key -&gt; key -&gt; WhereCondition
+forall key. PrimaryKey key -&gt; key -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEquals"><span class="hs-identifier hs-var">PrimaryKey.primaryKeyEquals</span></a></span><span>
+</span><span id="line-275"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; PrimaryKey key
+forall key writeEntity readEntity.
+TableDefinition (HasKey key) writeEntity readEntity
+-&gt; PrimaryKey key
+</span><a href="Orville.PostgreSQL.Internal.TableDefinition.html#tablePrimaryKey"><span class="hs-identifier hs-var">TableDef.tablePrimaryKey</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121612"><span class="hs-identifier hs-var">entityTable</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-276"></span><span>          </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679121611"><span class="hs-identifier hs-var">key</span></a></span><span>
+</span><span id="line-277"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+-&gt; SelectOptions -&gt; m (Maybe readEntity)
+forall (m :: * -&gt; *) key writeEntity readEntity.
+MonadOrville m =&gt;
+TableDefinition key writeEntity readEntity
+-&gt; SelectOptions -&gt; m (Maybe readEntity)
+</span><a href="Orville.PostgreSQL.Internal.EntityOperations.html#findFirstEntityBy"><span class="hs-identifier hs-var">findFirstEntityBy</span></a></span><span> </span><span class="annot"><span class="annottext">TableDefinition (HasKey key) writeEntity readEntity
+</span><a href="#local-6989586621679121612"><span class="hs-identifier hs-var">entityTable</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">WhereCondition -&gt; SelectOptions
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.SelectOptions.html#where_"><span class="hs-identifier hs-var">SelectOptions.where_</span></a></span><span> </span><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679121610"><span class="hs-identifier hs-var">primaryKeyCondition</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-278"></span><span>
+</span><span id="line-279"></span><span class="hs-comment">{- |
+  Thrown by 'updateFields' and 'updateFieldsAndReturnEntities' if the
+  'TableDef.TableDefinition' they are given has no columns to update.
+-}</span><span>
+</span><span id="line-283"></span><span class="hs-keyword">newtype</span><span> </span><span id="EmptyUpdateError"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#EmptyUpdateError"><span class="hs-identifier hs-var">EmptyUpdateError</span></a></span></span><span>
+</span><span id="line-284"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="EmptyUpdateError"><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#EmptyUpdateError"><span class="hs-identifier hs-var">EmptyUpdateError</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.TableIdentifier.html#TableIdentifier"><span class="hs-identifier hs-type">TableId.TableIdentifier</span></a></span><span>
+</span><span id="line-285"></span><span>
+</span><span id="line-286"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679121604"><span id="local-6989586621679121607"><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#EmptyUpdateError"><span class="hs-identifier hs-type">EmptyUpdateError</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-287"></span><span>  </span><span id="local-6989586621679121602"><span class="annot"><span class="annottext">show :: EmptyUpdateError -&gt; String
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">show</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#EmptyUpdateError"><span class="hs-identifier hs-type">EmptyUpdateError</span></a></span><span> </span><span id="local-6989586621679121600"><span class="annot"><span class="annottext">TableIdentifier
+</span><a href="#local-6989586621679121600"><span class="hs-identifier hs-var">tableId</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-288"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;EmptyUdateError: &quot;</span></span><span>
+</span><span id="line-289"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">TableIdentifier -&gt; String
+</span><a href="Orville.PostgreSQL.Internal.TableIdentifier.html#tableIdToString"><span class="hs-identifier hs-var">TableId.tableIdToString</span></a></span><span> </span><span class="annot"><span class="annottext">TableIdentifier
+</span><a href="#local-6989586621679121600"><span class="hs-identifier hs-var">tableId</span></a></span><span>
+</span><span id="line-290"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; has no columns to update.&quot;</span></span><span>
+</span><span id="line-291"></span><span>
+</span><span id="line-292"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679121591"><span id="local-6989586621679121593"><span id="local-6989586621679121595"><span class="annot"><span class="hs-identifier hs-type">Exception</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.EntityOperations.html#EmptyUpdateError"><span class="hs-identifier hs-type">EmptyUpdateError</span></a></span></span></span></span><span>
+</span><span id="line-293"></span></pre></body></html>

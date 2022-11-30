@@ -1,0 +1,620 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.SelectOptions.WhereCondition</span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier">WhereCondition</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-5"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldEquals"><span class="hs-identifier">fieldEquals</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-6"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3D%3D"><span class="hs-operator">(.==)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-7"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldNotEquals"><span class="hs-identifier">fieldNotEquals</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-8"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%2F%3D"><span class="hs-operator">(./=)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-9"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldGreaterThan"><span class="hs-identifier">fieldGreaterThan</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3E"><span class="hs-operator">(.&gt;)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLessThan"><span class="hs-identifier">fieldLessThan</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C"><span class="hs-operator">(.&lt;)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldGreaterThanOrEqualTo"><span class="hs-identifier">fieldGreaterThanOrEqualTo</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3E%3D"><span class="hs-operator">(.&gt;=)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLessThanOrEqualTo"><span class="hs-identifier">fieldLessThanOrEqualTo</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C%3D"><span class="hs-operator">(.&lt;=)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIsNull"><span class="hs-identifier">fieldIsNull</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIsNotNull"><span class="hs-identifier">fieldIsNotNull</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLike"><span class="hs-identifier">fieldLike</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-20"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLikeInsensitive"><span class="hs-identifier">fieldLikeInsensitive</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIn"><span class="hs-identifier">fieldIn</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C-"><span class="hs-operator">(.&lt;-)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-23"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldNotIn"><span class="hs-identifier">fieldNotIn</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-24"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C%2F-"><span class="hs-operator">(.&lt;/-)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-25"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldTupleIn"><span class="hs-identifier">fieldTupleIn</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-26"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldTupleNotIn"><span class="hs-identifier">fieldTupleNotIn</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-27"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereAnd"><span class="hs-identifier">whereAnd</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-28"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%26%26"><span class="hs-operator">(.&amp;&amp;)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-29"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereOr"><span class="hs-identifier">whereOr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-30"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%7C%7C"><span class="hs-operator">(.||)</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-31"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereBooleanExpr"><span class="hs-identifier">whereBooleanExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-32"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier">whereConditionToBooleanExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(:|)</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Expr</span></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.FieldDefinition</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">FieldDef</span></span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.SqlValue</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">SqlValue</span></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">{- |
+  A 'WhereCondition' represents a SQL expression that can be added to SELECT
+  statements to restrict the rows returned by a query. Various functions
+  are provided below to construct conditions.
+-}</span><span>
+</span><span id="line-49"></span><span class="hs-keyword">newtype</span><span> </span><span id="WhereCondition"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span></span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="WhereCondition"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">Expr.BooleanExpr</span></a></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679118431"><span id="local-6989586621679118433"><span class="annot"><span class="annottext">RawSql -&gt; WhereCondition
+WhereCondition -&gt; RawSql
+(WhereCondition -&gt; RawSql)
+-&gt; (RawSql -&gt; WhereCondition) -&gt; SqlExpression WhereCondition
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; WhereCondition
+$cunsafeFromRawSql :: RawSql -&gt; WhereCondition
+toRawSql :: WhereCondition -&gt; RawSql
+$ctoRawSql :: WhereCondition -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">{- |
+  Constructs a 'WhereCondition' from a 'Expr.BooleanExpr'. You can use this to
+  together with the 'RawSql.RawSql' related functions in the 'Expr' module to
+  use SQL expressions that Orville does not directly support in your queries.
+-}</span><span>
+</span><span id="line-58"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereBooleanExpr"><span class="hs-identifier hs-type">whereBooleanExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">Expr.BooleanExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span>
+</span><span id="line-59"></span><span id="whereBooleanExpr"><span class="annot"><span class="annottext">whereBooleanExpr :: BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereBooleanExpr"><span class="hs-identifier hs-var hs-var">whereBooleanExpr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-60"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="hs-comment">{- |
+  Converts a 'WhereCondition' into a 'Expr.BooleanExpr' so that you can use it
+  with the functions from the 'Expr' module if you are building SQL expressions
+  yourself.
+-}</span><span>
+</span><span id="line-67"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier hs-type">whereConditionToBooleanExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">Expr.BooleanExpr</span></a></span><span>
+</span><span id="line-68"></span><span id="whereConditionToBooleanExpr"><span class="annot"><span class="annottext">whereConditionToBooleanExpr :: WhereCondition -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier hs-var hs-var">whereConditionToBooleanExpr</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span id="local-6989586621679118429"><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679118429"><span class="hs-identifier hs-var">expr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-69"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr
+</span><a href="#local-6989586621679118429"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="hs-comment">{- |
+  Checks that the value in a field equals a particular value.
+-}</span><span>
+</span><span id="line-74"></span><span id="local-6989586621679118536"><span id="local-6989586621679118537"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldEquals"><span class="hs-identifier hs-type">fieldEquals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118537"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118536"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118536"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-75"></span><span id="fieldEquals"><span class="annot"><span class="annottext">fieldEquals :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldEquals"><span class="hs-identifier hs-var hs-var">fieldEquals</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-76"></span><span>  </span><span class="annot"><span class="annottext">(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereColumnComparison"><span class="hs-identifier hs-var">whereColumnComparison</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnEquals"><span class="hs-identifier hs-var">Expr.columnEquals</span></a></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="hs-comment">{- |
+  Operator alias for 'fieldEquals'
+-}</span><span>
+</span><span id="line-81"></span><span id="local-6989586621679118425"><span id="local-6989586621679118426"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3D%3D"><span class="hs-operator hs-type">(.==)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118426"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118425"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118425"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-82"></span><span id=".%3D%3D"><span class="annot"><span class="annottext">.== :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3D%3D"><span class="hs-operator hs-var hs-var">(.==)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldEquals"><span class="hs-identifier hs-var">fieldEquals</span></a></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="hs-keyword">infixl</span><span> </span><span class="hs-number">9</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3D%3D"><span class="hs-operator hs-type">.==</span></a></span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span class="hs-comment">{- |
+  Checks that the value in a field does not equal a particular value.
+-}</span><span>
+</span><span id="line-89"></span><span id="local-6989586621679118423"><span id="local-6989586621679118424"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldNotEquals"><span class="hs-identifier hs-type">fieldNotEquals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118424"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118423"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118423"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-90"></span><span id="fieldNotEquals"><span class="annot"><span class="annottext">fieldNotEquals :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldNotEquals"><span class="hs-identifier hs-var hs-var">fieldNotEquals</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="annottext">(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereColumnComparison"><span class="hs-identifier hs-var">whereColumnComparison</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnNotEquals"><span class="hs-identifier hs-var">Expr.columnNotEquals</span></a></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">{- |
+  Operator alias for 'fieldNotEquals'
+-}</span><span>
+</span><span id="line-96"></span><span id="local-6989586621679118420"><span id="local-6989586621679118421"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%2F%3D"><span class="hs-operator hs-type">(./=)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118421"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118420"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118420"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-97"></span><span id=".%2F%3D"><span class="annot"><span class="annottext">./= :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%2F%3D"><span class="hs-operator hs-var hs-var">(./=)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldNotEquals"><span class="hs-identifier hs-var">fieldNotEquals</span></a></span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-keyword">infixl</span><span> </span><span class="hs-number">9</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%2F%3D"><span class="hs-operator hs-type">./=</span></a></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="hs-comment">{- |
+  Checks that the value in a field is greater than a particular value.
+-}</span><span>
+</span><span id="line-104"></span><span id="local-6989586621679118418"><span id="local-6989586621679118419"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldGreaterThan"><span class="hs-identifier hs-type">fieldGreaterThan</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118419"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118418"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118418"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-105"></span><span id="fieldGreaterThan"><span class="annot"><span class="annottext">fieldGreaterThan :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldGreaterThan"><span class="hs-identifier hs-var hs-var">fieldGreaterThan</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-106"></span><span>  </span><span class="annot"><span class="annottext">(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereColumnComparison"><span class="hs-identifier hs-var">whereColumnComparison</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnGreaterThan"><span class="hs-identifier hs-var">Expr.columnGreaterThan</span></a></span><span>
+</span><span id="line-107"></span><span>
+</span><span id="line-108"></span><span class="hs-comment">{- |
+  Operator alias for 'fieldGreaterThan'
+-}</span><span>
+</span><span id="line-111"></span><span id="local-6989586621679118415"><span id="local-6989586621679118416"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3E"><span class="hs-operator hs-type">(.&gt;)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118416"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118415"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118415"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-112"></span><span id=".%3E"><span class="annot"><span class="annottext">.&gt; :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3E"><span class="hs-operator hs-var hs-var">(.&gt;)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldGreaterThan"><span class="hs-identifier hs-var">fieldGreaterThan</span></a></span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span class="hs-keyword">infixl</span><span> </span><span class="hs-number">9</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3E"><span class="hs-operator hs-type">.&gt;</span></a></span><span>
+</span><span id="line-115"></span><span>
+</span><span id="line-116"></span><span class="hs-comment">{- |
+  Checks that the value in a field is less than a particular value.
+-}</span><span>
+</span><span id="line-119"></span><span id="local-6989586621679118413"><span id="local-6989586621679118414"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLessThan"><span class="hs-identifier hs-type">fieldLessThan</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118414"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118413"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118413"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-120"></span><span id="fieldLessThan"><span class="annot"><span class="annottext">fieldLessThan :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLessThan"><span class="hs-identifier hs-var hs-var">fieldLessThan</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-121"></span><span>  </span><span class="annot"><span class="annottext">(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereColumnComparison"><span class="hs-identifier hs-var">whereColumnComparison</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLessThan"><span class="hs-identifier hs-var">Expr.columnLessThan</span></a></span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span class="hs-comment">{- |
+  Operator alias for 'fieldLessThan'
+-}</span><span>
+</span><span id="line-126"></span><span id="local-6989586621679118410"><span id="local-6989586621679118411"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C"><span class="hs-operator hs-type">(.&lt;)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118411"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118410"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118410"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-127"></span><span id=".%3C"><span class="annot"><span class="annottext">.&lt; :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C"><span class="hs-operator hs-var hs-var">(.&lt;)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLessThan"><span class="hs-identifier hs-var">fieldLessThan</span></a></span><span>
+</span><span id="line-128"></span><span>
+</span><span id="line-129"></span><span class="hs-keyword">infixl</span><span> </span><span class="hs-number">9</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C"><span class="hs-operator hs-type">.&lt;</span></a></span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span class="hs-comment">{- |
+  Checks that the value in a field is greater than or equal to a particular value.
+-}</span><span>
+</span><span id="line-134"></span><span id="local-6989586621679118408"><span id="local-6989586621679118409"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldGreaterThanOrEqualTo"><span class="hs-identifier hs-type">fieldGreaterThanOrEqualTo</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118409"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118408"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118408"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-135"></span><span id="fieldGreaterThanOrEqualTo"><span class="annot"><span class="annottext">fieldGreaterThanOrEqualTo :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldGreaterThanOrEqualTo"><span class="hs-identifier hs-var hs-var">fieldGreaterThanOrEqualTo</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-136"></span><span>  </span><span class="annot"><span class="annottext">(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereColumnComparison"><span class="hs-identifier hs-var">whereColumnComparison</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnGreaterThanOrEqualTo"><span class="hs-identifier hs-var">Expr.columnGreaterThanOrEqualTo</span></a></span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span class="hs-comment">{- |
+  Operator alias for 'fieldGreaterThanOrEqualTo'
+-}</span><span>
+</span><span id="line-141"></span><span id="local-6989586621679118405"><span id="local-6989586621679118406"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3E%3D"><span class="hs-operator hs-type">(.&gt;=)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118406"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118405"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118405"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-142"></span><span id=".%3E%3D"><span class="annot"><span class="annottext">.&gt;= :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3E%3D"><span class="hs-operator hs-var hs-var">(.&gt;=)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldGreaterThanOrEqualTo"><span class="hs-identifier hs-var">fieldGreaterThanOrEqualTo</span></a></span><span>
+</span><span id="line-143"></span><span>
+</span><span id="line-144"></span><span class="hs-keyword">infixl</span><span> </span><span class="hs-number">9</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3E%3D"><span class="hs-operator hs-type">.&gt;=</span></a></span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="hs-comment">{- |
+  Checks that the value in a field is less than or equal to a particular value.
+-}</span><span>
+</span><span id="line-149"></span><span id="local-6989586621679118403"><span id="local-6989586621679118404"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLessThanOrEqualTo"><span class="hs-identifier hs-type">fieldLessThanOrEqualTo</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118404"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118403"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118403"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-150"></span><span id="fieldLessThanOrEqualTo"><span class="annot"><span class="annottext">fieldLessThanOrEqualTo :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLessThanOrEqualTo"><span class="hs-identifier hs-var hs-var">fieldLessThanOrEqualTo</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-151"></span><span>  </span><span class="annot"><span class="annottext">(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+(ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereColumnComparison"><span class="hs-identifier hs-var">whereColumnComparison</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLessThanOrEqualTo"><span class="hs-identifier hs-var">Expr.columnLessThanOrEqualTo</span></a></span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span class="hs-comment">{- |
+  Operator alias for 'fieldLessThanOrEqualTo'
+-}</span><span>
+</span><span id="line-156"></span><span id="local-6989586621679118400"><span id="local-6989586621679118401"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C%3D"><span class="hs-operator hs-type">(.&lt;=)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118401"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118400"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118400"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-157"></span><span id=".%3C%3D"><span class="annot"><span class="annottext">.&lt;= :: FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C%3D"><span class="hs-operator hs-var hs-var">(.&lt;=)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLessThanOrEqualTo"><span class="hs-identifier hs-var">fieldLessThanOrEqualTo</span></a></span><span>
+</span><span id="line-158"></span><span>
+</span><span id="line-159"></span><span class="hs-keyword">infixl</span><span> </span><span class="hs-number">9</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C%3D"><span class="hs-operator hs-type">.&lt;=</span></a></span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span class="hs-comment">{- |
+  Checks that the value in a field matches a like pattern
+-}</span><span>
+</span><span id="line-164"></span><span id="local-6989586621679118398"><span id="local-6989586621679118399"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLike"><span class="hs-identifier hs-type">fieldLike</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118399"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118398"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-165"></span><span id="fieldLike"><span class="annot"><span class="annottext">fieldLike :: FieldDefinition nullability a -&gt; Text -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLike"><span class="hs-identifier hs-var hs-var">fieldLike</span></a></span></span><span> </span><span id="local-6989586621679118397"><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118397"><span class="hs-identifier hs-var">fieldDef</span></a></span></span><span> </span><span id="local-6989586621679118396"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679118396"><span class="hs-identifier hs-var">likePattern</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-166"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-167"></span><span>    </span><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLike"><span class="hs-identifier hs-var">Expr.columnLike</span></a></span><span>
+</span><span id="line-168"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118397"><span class="hs-identifier hs-var">fieldDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-169"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.SqlValue.html#fromText"><span class="hs-identifier hs-var">SqlValue.fromText</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679118396"><span class="hs-identifier hs-var">likePattern</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-170"></span><span>
+</span><span id="line-171"></span><span class="hs-comment">{- |
+  Checks that the value in a field matches a like pattern case insensitively
+-}</span><span>
+</span><span id="line-174"></span><span id="local-6989586621679118391"><span id="local-6989586621679118392"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLikeInsensitive"><span class="hs-identifier hs-type">fieldLikeInsensitive</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118392"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118391"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-175"></span><span id="fieldLikeInsensitive"><span class="annot"><span class="annottext">fieldLikeInsensitive :: FieldDefinition nullability a -&gt; Text -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldLikeInsensitive"><span class="hs-identifier hs-var hs-var">fieldLikeInsensitive</span></a></span></span><span> </span><span id="local-6989586621679118390"><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118390"><span class="hs-identifier hs-var">fieldDef</span></a></span></span><span> </span><span id="local-6989586621679118389"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679118389"><span class="hs-identifier hs-var">likePattern</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-176"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-177"></span><span>    </span><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnLikeInsensitive"><span class="hs-identifier hs-var">Expr.columnLikeInsensitive</span></a></span><span>
+</span><span id="line-178"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118390"><span class="hs-identifier hs-var">fieldDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-179"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.SqlValue.html#fromText"><span class="hs-identifier hs-var">SqlValue.fromText</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679118389"><span class="hs-identifier hs-var">likePattern</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-180"></span><span>
+</span><span id="line-181"></span><span class="hs-comment">{- |
+  Checks that the value in a field is null.
+-}</span><span>
+</span><span id="line-184"></span><span id="local-6989586621679118387"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIsNull"><span class="hs-identifier hs-type">fieldIsNull</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#Nullable"><span class="hs-identifier hs-type">FieldDef.Nullable</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118387"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span><span>
+</span><span id="line-185"></span><span id="fieldIsNull"><span class="annot"><span class="annottext">fieldIsNull :: FieldDefinition Nullable a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIsNull"><span class="hs-identifier hs-var hs-var">fieldIsNull</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-186"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition)
+-&gt; (FieldDefinition Nullable a -&gt; BooleanExpr)
+-&gt; FieldDefinition Nullable a
+-&gt; WhereCondition
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIsNull"><span class="hs-identifier hs-var">Expr.columnIsNull</span></a></span><span> </span><span class="annot"><span class="annottext">(ColumnName -&gt; BooleanExpr)
+-&gt; (FieldDefinition Nullable a -&gt; ColumnName)
+-&gt; FieldDefinition Nullable a
+-&gt; BooleanExpr
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">FieldDefinition Nullable a -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span>
+</span><span id="line-187"></span><span>
+</span><span id="line-188"></span><span class="hs-comment">{- |
+  Checks that the value in a field is not null.
+-}</span><span>
+</span><span id="line-191"></span><span id="local-6989586621679118384"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIsNotNull"><span class="hs-identifier hs-type">fieldIsNotNull</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#Nullable"><span class="hs-identifier hs-type">FieldDef.Nullable</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118384"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span><span>
+</span><span id="line-192"></span><span id="fieldIsNotNull"><span class="annot"><span class="annottext">fieldIsNotNull :: FieldDefinition Nullable a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIsNotNull"><span class="hs-identifier hs-var hs-var">fieldIsNotNull</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-193"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition)
+-&gt; (FieldDefinition Nullable a -&gt; BooleanExpr)
+-&gt; FieldDefinition Nullable a
+-&gt; WhereCondition
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIsNotNull"><span class="hs-identifier hs-var">Expr.columnIsNotNull</span></a></span><span> </span><span class="annot"><span class="annottext">(ColumnName -&gt; BooleanExpr)
+-&gt; (FieldDefinition Nullable a -&gt; ColumnName)
+-&gt; FieldDefinition Nullable a
+-&gt; BooleanExpr
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">FieldDefinition Nullable a -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span>
+</span><span id="line-194"></span><span>
+</span><span id="line-195"></span><span class="hs-comment">{- |
+  Checks that a field matches a list of values
+-}</span><span>
+</span><span id="line-198"></span><span id="local-6989586621679118488"><span id="local-6989586621679118489"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIn"><span class="hs-identifier hs-type">fieldIn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118489"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118488"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679118488"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-199"></span><span id="fieldIn"><span class="annot"><span class="annottext">fieldIn :: FieldDefinition nullability a -&gt; NonEmpty a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIn"><span class="hs-identifier hs-var hs-var">fieldIn</span></a></span></span><span> </span><span id="local-6989586621679118382"><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118382"><span class="hs-identifier hs-var">fieldDef</span></a></span></span><span> </span><span id="local-6989586621679118381"><span class="annot"><span class="annottext">NonEmpty a
+</span><a href="#local-6989586621679118381"><span class="hs-identifier hs-var">values</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-200"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-201"></span><span>    </span><span class="annot"><span class="annottext">ColumnName -&gt; NonEmpty SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnIn"><span class="hs-identifier hs-var">Expr.columnIn</span></a></span><span>
+</span><span id="line-202"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118382"><span class="hs-identifier hs-var">fieldDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-203"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; SqlValue) -&gt; NonEmpty a -&gt; NonEmpty SqlValue
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; SqlValue
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldValueToSqlValue"><span class="hs-identifier hs-var">FieldDef.fieldValueToSqlValue</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118382"><span class="hs-identifier hs-var">fieldDef</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NonEmpty a
+</span><a href="#local-6989586621679118381"><span class="hs-identifier hs-var">values</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-204"></span><span>
+</span><span id="line-205"></span><span class="hs-comment">{- |
+  Operator alias for 'fieldIn'
+-}</span><span>
+</span><span id="line-208"></span><span id="local-6989586621679118377"><span id="local-6989586621679118378"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C-"><span class="hs-operator hs-type">(.&lt;-)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118378"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118377"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679118377"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-209"></span><span id=".%3C-"><span class="annot"><span class="annottext">.&lt;- :: FieldDefinition nullability a -&gt; NonEmpty a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C-"><span class="hs-operator hs-var hs-var">(.&lt;-)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; NonEmpty a -&gt; WhereCondition
+forall nullability a.
+FieldDefinition nullability a -&gt; NonEmpty a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldIn"><span class="hs-identifier hs-var">fieldIn</span></a></span><span>
+</span><span id="line-210"></span><span>
+</span><span id="line-211"></span><span class="hs-keyword">infixl</span><span> </span><span class="hs-number">9</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C-"><span class="hs-operator hs-type">.&lt;-</span></a></span><span>
+</span><span id="line-212"></span><span>
+</span><span id="line-213"></span><span class="hs-comment">{- |
+  Checks that a field does not match a list of values
+-}</span><span>
+</span><span id="line-216"></span><span id="local-6989586621679118375"><span id="local-6989586621679118376"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldNotIn"><span class="hs-identifier hs-type">fieldNotIn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118376"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118375"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679118375"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-217"></span><span id="fieldNotIn"><span class="annot"><span class="annottext">fieldNotIn :: FieldDefinition nullability a -&gt; NonEmpty a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldNotIn"><span class="hs-identifier hs-var hs-var">fieldNotIn</span></a></span></span><span> </span><span id="local-6989586621679118374"><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118374"><span class="hs-identifier hs-var">fieldDef</span></a></span></span><span> </span><span id="local-6989586621679118373"><span class="annot"><span class="annottext">NonEmpty a
+</span><a href="#local-6989586621679118373"><span class="hs-identifier hs-var">values</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-218"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-219"></span><span>    </span><span class="annot"><span class="annottext">ColumnName -&gt; NonEmpty SqlValue -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnNotIn"><span class="hs-identifier hs-var">Expr.columnNotIn</span></a></span><span>
+</span><span id="line-220"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118374"><span class="hs-identifier hs-var">fieldDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-221"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; SqlValue) -&gt; NonEmpty a -&gt; NonEmpty SqlValue
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; SqlValue
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldValueToSqlValue"><span class="hs-identifier hs-var">FieldDef.fieldValueToSqlValue</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118374"><span class="hs-identifier hs-var">fieldDef</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NonEmpty a
+</span><a href="#local-6989586621679118373"><span class="hs-identifier hs-var">values</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-222"></span><span>
+</span><span id="line-223"></span><span class="hs-comment">{- |
+  Operator alias for 'fieldNotIn'
+-}</span><span>
+</span><span id="line-226"></span><span id="local-6989586621679118370"><span id="local-6989586621679118371"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C%2F-"><span class="hs-operator hs-type">(.&lt;/-)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118371"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118370"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679118370"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span><span>
+</span><span id="line-227"></span><span id=".%3C%2F-"><span class="annot"><span class="annottext">.&lt;/- :: FieldDefinition nullability a -&gt; NonEmpty a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C%2F-"><span class="hs-operator hs-var hs-var">(.&lt;/-)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; NonEmpty a -&gt; WhereCondition
+forall nullability a.
+FieldDefinition nullability a -&gt; NonEmpty a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldNotIn"><span class="hs-identifier hs-var">fieldNotIn</span></a></span><span>
+</span><span id="line-228"></span><span>
+</span><span id="line-229"></span><span class="hs-keyword">infixl</span><span> </span><span class="hs-number">9</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%3C%2F-"><span class="hs-operator hs-type">.&lt;/-</span></a></span><span>
+</span><span id="line-230"></span><span>
+</span><span id="line-231"></span><span class="hs-comment">{- |
+  Checks that a tuple of two fields is in the list of specified tuplies
+-}</span><span>
+</span><span id="line-234"></span><span id="local-6989586621679118366"><span id="local-6989586621679118367"><span id="local-6989586621679118368"><span id="local-6989586621679118369"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldTupleIn"><span class="hs-identifier hs-type">fieldTupleIn</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-235"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118369"><span class="hs-identifier hs-type">nullabilityA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118368"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-236"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118367"><span class="hs-identifier hs-type">nullabilityB</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118366"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-237"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679118368"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679118366"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-238"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span></span></span><span>
+</span><span id="line-239"></span><span id="fieldTupleIn"><span class="annot"><span class="annottext">fieldTupleIn :: FieldDefinition nullabilityA a
+-&gt; FieldDefinition nullabilityB b
+-&gt; NonEmpty (a, b)
+-&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldTupleIn"><span class="hs-identifier hs-var hs-var">fieldTupleIn</span></a></span></span><span> </span><span id="local-6989586621679118365"><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+</span><a href="#local-6989586621679118365"><span class="hs-identifier hs-var">fieldDefA</span></a></span></span><span> </span><span id="local-6989586621679118364"><span class="annot"><span class="annottext">FieldDefinition nullabilityB b
+</span><a href="#local-6989586621679118364"><span class="hs-identifier hs-var">fieldDefB</span></a></span></span><span> </span><span id="local-6989586621679118363"><span class="annot"><span class="annottext">NonEmpty (a, b)
+</span><a href="#local-6989586621679118363"><span class="hs-identifier hs-var">values</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-240"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-241"></span><span>    </span><span class="annot"><span class="annottext">NonEmpty ColumnName -&gt; NonEmpty (NonEmpty SqlValue) -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnTupleIn"><span class="hs-identifier hs-var">Expr.columnTupleIn</span></a></span><span>
+</span><span id="line-242"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+</span><a href="#local-6989586621679118365"><span class="hs-identifier hs-var">fieldDefA</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; [ColumnName] -&gt; NonEmpty ColumnName
+forall a. a -&gt; [a] -&gt; NonEmpty a
+</span><span class="hs-operator hs-var">:|</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">FieldDefinition nullabilityB b -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityB b
+</span><a href="#local-6989586621679118364"><span class="hs-identifier hs-var">fieldDefB</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-243"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((a, b) -&gt; NonEmpty SqlValue)
+-&gt; NonEmpty (a, b) -&gt; NonEmpty (NonEmpty SqlValue)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+-&gt; FieldDefinition nullabilityB b -&gt; (a, b) -&gt; NonEmpty SqlValue
+forall nullabilityA a nullabilityB b.
+FieldDefinition nullabilityA a
+-&gt; FieldDefinition nullabilityB b -&gt; (a, b) -&gt; NonEmpty SqlValue
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#toSqlValueTuple"><span class="hs-identifier hs-var">toSqlValueTuple</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+</span><a href="#local-6989586621679118365"><span class="hs-identifier hs-var">fieldDefA</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityB b
+</span><a href="#local-6989586621679118364"><span class="hs-identifier hs-var">fieldDefB</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NonEmpty (a, b)
+</span><a href="#local-6989586621679118363"><span class="hs-identifier hs-var">values</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-244"></span><span>
+</span><span id="line-245"></span><span class="hs-comment">{- |
+  Checks that a tuple of two fields is not in the list of specified tuplies
+-}</span><span>
+</span><span id="line-248"></span><span id="local-6989586621679118357"><span id="local-6989586621679118358"><span id="local-6989586621679118359"><span id="local-6989586621679118360"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldTupleNotIn"><span class="hs-identifier hs-type">fieldTupleNotIn</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-249"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118360"><span class="hs-identifier hs-type">nullabilityA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118359"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-250"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118358"><span class="hs-identifier hs-type">nullabilityB</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118357"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-251"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679118359"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679118357"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-252"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span></span></span><span>
+</span><span id="line-253"></span><span id="fieldTupleNotIn"><span class="annot"><span class="annottext">fieldTupleNotIn :: FieldDefinition nullabilityA a
+-&gt; FieldDefinition nullabilityB b
+-&gt; NonEmpty (a, b)
+-&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldTupleNotIn"><span class="hs-identifier hs-var hs-var">fieldTupleNotIn</span></a></span></span><span> </span><span id="local-6989586621679118356"><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+</span><a href="#local-6989586621679118356"><span class="hs-identifier hs-var">fieldDefA</span></a></span></span><span> </span><span id="local-6989586621679118355"><span class="annot"><span class="annottext">FieldDefinition nullabilityB b
+</span><a href="#local-6989586621679118355"><span class="hs-identifier hs-var">fieldDefB</span></a></span></span><span> </span><span id="local-6989586621679118354"><span class="annot"><span class="annottext">NonEmpty (a, b)
+</span><a href="#local-6989586621679118354"><span class="hs-identifier hs-var">values</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-254"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-255"></span><span>    </span><span class="annot"><span class="annottext">NonEmpty ColumnName -&gt; NonEmpty (NonEmpty SqlValue) -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#columnTupleNotIn"><span class="hs-identifier hs-var">Expr.columnTupleNotIn</span></a></span><span>
+</span><span id="line-256"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+</span><a href="#local-6989586621679118356"><span class="hs-identifier hs-var">fieldDefA</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; [ColumnName] -&gt; NonEmpty ColumnName
+forall a. a -&gt; [a] -&gt; NonEmpty a
+</span><span class="hs-operator hs-var">:|</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">FieldDefinition nullabilityB b -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityB b
+</span><a href="#local-6989586621679118355"><span class="hs-identifier hs-var">fieldDefB</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-257"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((a, b) -&gt; NonEmpty SqlValue)
+-&gt; NonEmpty (a, b) -&gt; NonEmpty (NonEmpty SqlValue)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+-&gt; FieldDefinition nullabilityB b -&gt; (a, b) -&gt; NonEmpty SqlValue
+forall nullabilityA a nullabilityB b.
+FieldDefinition nullabilityA a
+-&gt; FieldDefinition nullabilityB b -&gt; (a, b) -&gt; NonEmpty SqlValue
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#toSqlValueTuple"><span class="hs-identifier hs-var">toSqlValueTuple</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+</span><a href="#local-6989586621679118356"><span class="hs-identifier hs-var">fieldDefA</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityB b
+</span><a href="#local-6989586621679118355"><span class="hs-identifier hs-var">fieldDefB</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NonEmpty (a, b)
+</span><a href="#local-6989586621679118354"><span class="hs-identifier hs-var">values</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-258"></span><span>
+</span><span id="line-259"></span><span class="hs-comment">{- |
+  Constructs a SqlValue &quot;tuple&quot; (i.e. NonEmpty list) for two fields
+-}</span><span>
+</span><span id="line-262"></span><span id="local-6989586621679118475"><span id="local-6989586621679118476"><span id="local-6989586621679118477"><span id="local-6989586621679118478"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#toSqlValueTuple"><span class="hs-identifier hs-type">toSqlValueTuple</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-263"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118478"><span class="hs-identifier hs-type">nullabilityA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118477"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-264"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118476"><span class="hs-identifier hs-type">nullabilityB</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118475"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-265"></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679118477"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679118475"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-266"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue.SqlValue</span></a></span></span></span></span></span><span>
+</span><span id="line-267"></span><span id="toSqlValueTuple"><span class="annot"><span class="annottext">toSqlValueTuple :: FieldDefinition nullabilityA a
+-&gt; FieldDefinition nullabilityB b -&gt; (a, b) -&gt; NonEmpty SqlValue
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#toSqlValueTuple"><span class="hs-identifier hs-var hs-var">toSqlValueTuple</span></a></span></span><span> </span><span id="local-6989586621679118352"><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+</span><a href="#local-6989586621679118352"><span class="hs-identifier hs-var">fieldDefA</span></a></span></span><span> </span><span id="local-6989586621679118351"><span class="annot"><span class="annottext">FieldDefinition nullabilityB b
+</span><a href="#local-6989586621679118351"><span class="hs-identifier hs-var">fieldDefB</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679118350"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679118350"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679118349"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679118349"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-268"></span><span>  </span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a -&gt; a -&gt; SqlValue
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldValueToSqlValue"><span class="hs-identifier hs-var">FieldDef.fieldValueToSqlValue</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityA a
+</span><a href="#local-6989586621679118352"><span class="hs-identifier hs-var">fieldDefA</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679118350"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-269"></span><span>    </span><span class="annot"><span class="annottext">SqlValue -&gt; [SqlValue] -&gt; NonEmpty SqlValue
+forall a. a -&gt; [a] -&gt; NonEmpty a
+</span><span class="hs-operator hs-var">:|</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">FieldDefinition nullabilityB b -&gt; b -&gt; SqlValue
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldValueToSqlValue"><span class="hs-identifier hs-var">FieldDef.fieldValueToSqlValue</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullabilityB b
+</span><a href="#local-6989586621679118351"><span class="hs-identifier hs-var">fieldDefB</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679118349"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-270"></span><span>
+</span><span id="line-271"></span><span class="hs-comment">{- |
+  INTERNAL: Constructs a field-based 'WhereCondition' using a function that
+  builds a 'Expr.BooleanExpr'
+-}</span><span>
+</span><span id="line-275"></span><span id="local-6989586621679118540"><span id="local-6989586621679118541"><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereColumnComparison"><span class="hs-identifier hs-type">whereColumnComparison</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-276"></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">Expr.ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue.SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">Expr.BooleanExpr</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-277"></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDef.FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118541"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118540"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118540"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-278"></span><span id="whereColumnComparison"><span class="annot"><span class="annottext">whereColumnComparison :: (ColumnName -&gt; SqlValue -&gt; BooleanExpr)
+-&gt; FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereColumnComparison"><span class="hs-identifier hs-var hs-var">whereColumnComparison</span></a></span></span><span> </span><span id="local-6989586621679118348"><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="#local-6989586621679118348"><span class="hs-identifier hs-var">columnComparison</span></a></span></span><span> </span><span id="local-6989586621679118347"><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118347"><span class="hs-identifier hs-var">fieldDef</span></a></span></span><span> </span><span id="local-6989586621679118346"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679118346"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-279"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-var">WhereCondition</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-280"></span><span>    </span><span class="annot"><span class="annottext">ColumnName -&gt; SqlValue -&gt; BooleanExpr
+</span><a href="#local-6989586621679118348"><span class="hs-identifier hs-var">columnComparison</span></a></span><span>
+</span><span id="line-281"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">FieldDef.fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118347"><span class="hs-identifier hs-var">fieldDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-282"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; SqlValue
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldValueToSqlValue"><span class="hs-identifier hs-var">FieldDef.fieldValueToSqlValue</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118347"><span class="hs-identifier hs-var">fieldDef</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679118346"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-283"></span><span>
+</span><span id="line-284"></span><span class="hs-comment">{- |
+  Combines multiple 'WhereCondition's together using 'AND'.
+-}</span><span>
+</span><span id="line-287"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereAnd"><span class="hs-identifier hs-type">whereAnd</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span>
+</span><span id="line-288"></span><span id="whereAnd"><span class="annot"><span class="annottext">whereAnd :: WhereCondition -&gt; WhereCondition -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereAnd"><span class="hs-identifier hs-var hs-var">whereAnd</span></a></span></span><span> </span><span id="local-6989586621679118345"><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679118345"><span class="hs-identifier hs-var">left</span></a></span></span><span> </span><span id="local-6989586621679118344"><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679118344"><span class="hs-identifier hs-var">right</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-289"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereBooleanExpr"><span class="hs-identifier hs-var">whereBooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-290"></span><span>    </span><span class="annot"><span class="annottext">BooleanExpr -&gt; BooleanExpr -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#andExpr"><span class="hs-identifier hs-var">Expr.andExpr</span></a></span><span>
+</span><span id="line-291"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BooleanExpr -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#parenthesized"><span class="hs-identifier hs-var">Expr.parenthesized</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">WhereCondition -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier hs-var">whereConditionToBooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679118345"><span class="hs-identifier hs-var">left</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-292"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BooleanExpr -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#parenthesized"><span class="hs-identifier hs-var">Expr.parenthesized</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">WhereCondition -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier hs-var">whereConditionToBooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679118344"><span class="hs-identifier hs-var">right</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-293"></span><span>
+</span><span id="line-294"></span><span class="hs-comment">{- |
+  Operator alias for 'whereAnd'
+-}</span><span>
+</span><span id="line-297"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%26%26"><span class="hs-operator hs-type">(.&amp;&amp;)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span>
+</span><span id="line-298"></span><span id=".%26%26"><span class="annot"><span class="annottext">.&amp;&amp; :: WhereCondition -&gt; WhereCondition -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%26%26"><span class="hs-operator hs-var hs-var">(.&amp;&amp;)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">WhereCondition -&gt; WhereCondition -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereAnd"><span class="hs-identifier hs-var">whereAnd</span></a></span><span>
+</span><span id="line-299"></span><span>
+</span><span id="line-300"></span><span class="hs-keyword">infixr</span><span> </span><span class="hs-number">8</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%26%26"><span class="hs-operator hs-type">.&amp;&amp;</span></a></span><span>
+</span><span id="line-301"></span><span>
+</span><span id="line-302"></span><span class="hs-comment">{- |
+  Combines multiple 'WhereCondition's together using 'OR.
+-}</span><span>
+</span><span id="line-305"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereOr"><span class="hs-identifier hs-type">whereOr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span>
+</span><span id="line-306"></span><span id="whereOr"><span class="annot"><span class="annottext">whereOr :: WhereCondition -&gt; WhereCondition -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereOr"><span class="hs-identifier hs-var hs-var">whereOr</span></a></span></span><span> </span><span id="local-6989586621679118341"><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679118341"><span class="hs-identifier hs-var">left</span></a></span></span><span> </span><span id="local-6989586621679118340"><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679118340"><span class="hs-identifier hs-var">right</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-307"></span><span>  </span><span class="annot"><span class="annottext">BooleanExpr -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereBooleanExpr"><span class="hs-identifier hs-var">whereBooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(BooleanExpr -&gt; WhereCondition) -&gt; BooleanExpr -&gt; WhereCondition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-308"></span><span>    </span><span class="annot"><span class="annottext">BooleanExpr -&gt; BooleanExpr -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#orExpr"><span class="hs-identifier hs-var">Expr.orExpr</span></a></span><span>
+</span><span id="line-309"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BooleanExpr -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#parenthesized"><span class="hs-identifier hs-var">Expr.parenthesized</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">WhereCondition -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier hs-var">whereConditionToBooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679118341"><span class="hs-identifier hs-var">left</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-310"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BooleanExpr -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#parenthesized"><span class="hs-identifier hs-var">Expr.parenthesized</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">WhereCondition -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier hs-var">whereConditionToBooleanExpr</span></a></span><span> </span><span class="annot"><span class="annottext">WhereCondition
+</span><a href="#local-6989586621679118340"><span class="hs-identifier hs-var">right</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-311"></span><span>
+</span><span id="line-312"></span><span class="hs-comment">{- |
+  Operator alias for 'whereOr
+-}</span><span>
+</span><span id="line-315"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%7C%7C"><span class="hs-operator hs-type">(.||)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span><span>
+</span><span id="line-316"></span><span id=".%7C%7C"><span class="annot"><span class="annottext">.|| :: WhereCondition -&gt; WhereCondition -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%7C%7C"><span class="hs-operator hs-var hs-var">(.||)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">WhereCondition -&gt; WhereCondition -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereOr"><span class="hs-identifier hs-var">whereOr</span></a></span><span>
+</span><span id="line-317"></span><span>
+</span><span id="line-318"></span><span class="hs-keyword">infixr</span><span> </span><span class="hs-number">8</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#.%7C%7C"><span class="hs-operator hs-type">.||</span></a></span><span>
+</span><span id="line-319"></span></pre></body></html>

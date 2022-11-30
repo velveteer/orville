@@ -1,0 +1,362 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span id="%24con2tag_4y0vEbNbAZIG9juFCE3Yog"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.IndexDefinition</span><span>
+</span><span id="line-2"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier">IndexDefinition</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-3"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#uniqueIndex"><span class="hs-identifier">uniqueIndex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-4"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#uniqueNamedIndex"><span class="hs-identifier">uniqueNamedIndex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-5"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#nonUniqueIndex"><span class="hs-identifier">nonUniqueIndex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-6"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#nonUniqueNamedIndex"><span class="hs-identifier">nonUniqueNamedIndex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-7"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkIndexDefinition"><span class="hs-identifier">mkIndexDefinition</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-8"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkNamedIndexDefinition"><span class="hs-identifier">mkNamedIndexDefinition</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-9"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Index.html#IndexUniqueness"><span class="hs-identifier">Expr.IndexUniqueness</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Index.html#UniqueIndex"><span class="hs-identifier">UniqueIndex</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Index.html#NonUniqueIndex"><span class="hs-identifier">NonUniqueIndex</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexMigrationKey"><span class="hs-identifier">IndexMigrationKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#AttributeBasedIndexKey"><span class="hs-identifier">AttributeBasedIndexKey</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#NamedIndexKey"><span class="hs-identifier">NamedIndexKey</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#AttributeBasedIndexMigrationKey"><span class="hs-identifier">AttributeBasedIndexMigrationKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#AttributeBasedIndexMigrationKey"><span class="hs-identifier">AttributeBasedIndexMigrationKey</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexKeyUniqueness"><span class="hs-identifier">indexKeyUniqueness</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexKeyColumns"><span class="hs-identifier">indexKeyColumns</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#NamedIndexMigrationKey"><span class="hs-identifier">NamedIndexMigrationKey</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexMigrationKey"><span class="hs-identifier">indexMigrationKey</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexCreateExpr"><span class="hs-identifier">indexCreateExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NonEmpty</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">NEL</span></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Expr</span></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.FieldDefinition</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">FieldDefinition</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-comment">{- |
+  Defines an index that can be added to a 'Orville.PostgreSQL.TableDefinition'.
+  Use one of the constructor functions below (such as 'uniqueIndex') to
+  construct the index definition you wish to have and then use
+  'Orville.PostgreSQL.addTableIndexes'. to add them to your table definition.
+  Orville will then add the index next time you run auto-migrations.
+-}</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">data</span><span> </span><span id="IndexDefinition"><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-var">IndexDefinition</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="IndexDefinition"><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-var">IndexDefinition</span></a></span></span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="_indexCreateExpr"><span class="annot"><span class="annottext">IndexDefinition -&gt; Qualified TableName -&gt; CreateIndexExpr
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#_indexCreateExpr"><span class="hs-identifier hs-var hs-var">_indexCreateExpr</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Qualified.html#Qualified"><span class="hs-identifier hs-type">Expr.Qualified</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.TableName.html#TableName"><span class="hs-identifier hs-type">Expr.TableName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Index.html#CreateIndexExpr"><span class="hs-identifier hs-type">Expr.CreateIndexExpr</span></a></span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_indexMigrationKey"><span class="annot"><span class="annottext">IndexDefinition -&gt; IndexMigrationKey
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#_indexMigrationKey"><span class="hs-identifier hs-var hs-var">_indexMigrationKey</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexMigrationKey"><span class="hs-identifier hs-type">IndexMigrationKey</span></a></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">data</span><span> </span><span id="IndexMigrationKey"><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexMigrationKey"><span class="hs-identifier hs-var">IndexMigrationKey</span></a></span></span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="AttributeBasedIndexKey"><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#AttributeBasedIndexKey"><span class="hs-identifier hs-var">AttributeBasedIndexKey</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#AttributeBasedIndexMigrationKey"><span class="hs-identifier hs-type">AttributeBasedIndexMigrationKey</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="NamedIndexKey"><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#NamedIndexKey"><span class="hs-identifier hs-var">NamedIndexKey</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#NamedIndexMigrationKey"><span class="hs-identifier hs-type">NamedIndexMigrationKey</span></a></span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679118895"><span id="local-6989586621679118897"><span class="annot"><span class="annottext">IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+(IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool)
+-&gt; (IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool)
+-&gt; Eq IndexMigrationKey
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+$c/= :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+== :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+$c== :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679118879"><span id="local-6989586621679118881"><span id="local-6989586621679118883"><span id="local-6989586621679118885"><span id="local-6989586621679118887"><span id="local-6989586621679118889"><span id="local-6989586621679118891"><span class="annot"><span class="annottext">Eq IndexMigrationKey
+Eq IndexMigrationKey
+-&gt; (IndexMigrationKey -&gt; IndexMigrationKey -&gt; Ordering)
+-&gt; (IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool)
+-&gt; (IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool)
+-&gt; (IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool)
+-&gt; (IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool)
+-&gt; (IndexMigrationKey -&gt; IndexMigrationKey -&gt; IndexMigrationKey)
+-&gt; (IndexMigrationKey -&gt; IndexMigrationKey -&gt; IndexMigrationKey)
+-&gt; Ord IndexMigrationKey
+IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+IndexMigrationKey -&gt; IndexMigrationKey -&gt; Ordering
+IndexMigrationKey -&gt; IndexMigrationKey -&gt; IndexMigrationKey
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; IndexMigrationKey
+$cmin :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; IndexMigrationKey
+max :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; IndexMigrationKey
+$cmax :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; IndexMigrationKey
+&gt;= :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+$c&gt;= :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+&gt; :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+$c&gt; :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+&lt;= :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+$c&lt;= :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+&lt; :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+$c&lt; :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Bool
+compare :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Ordering
+$ccompare :: IndexMigrationKey -&gt; IndexMigrationKey -&gt; Ordering
+$cp1Ord :: Eq IndexMigrationKey
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">{- |
+  The key used by Orville to determine whether an index should be added to
+  a table when performing auto migrations. For most use cases the constructor
+  functions that build an 'IndexDefinition' will create this automatically
+  for you.
+-}</span><span>
+</span><span id="line-48"></span><span class="hs-keyword">data</span><span> </span><span id="AttributeBasedIndexMigrationKey"><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#AttributeBasedIndexMigrationKey"><span class="hs-identifier hs-var">AttributeBasedIndexMigrationKey</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="AttributeBasedIndexMigrationKey"><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#AttributeBasedIndexMigrationKey"><span class="hs-identifier hs-var">AttributeBasedIndexMigrationKey</span></a></span></span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="indexKeyUniqueness"><span class="annot"><span class="annottext">AttributeBasedIndexMigrationKey -&gt; IndexUniqueness
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexKeyUniqueness"><span class="hs-identifier hs-var hs-var">indexKeyUniqueness</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Index.html#IndexUniqueness"><span class="hs-identifier hs-type">Expr.IndexUniqueness</span></a></span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="indexKeyColumns"><span class="annot"><span class="annottext">AttributeBasedIndexMigrationKey -&gt; [FieldName]
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexKeyColumns"><span class="hs-identifier hs-var hs-var">indexKeyColumns</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldName"><span class="hs-identifier hs-type">FieldDefinition.FieldName</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-52"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679118874"><span id="local-6989586621679118876"><span class="annot"><span class="annottext">AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+(AttributeBasedIndexMigrationKey
+ -&gt; AttributeBasedIndexMigrationKey -&gt; Bool)
+-&gt; (AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey -&gt; Bool)
+-&gt; Eq AttributeBasedIndexMigrationKey
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+$c/= :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+== :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+$c== :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679118859"><span id="local-6989586621679118861"><span id="local-6989586621679118863"><span id="local-6989586621679118865"><span id="local-6989586621679118867"><span id="local-6989586621679118869"><span id="local-6989586621679118871"><span class="annot"><span class="annottext">Eq AttributeBasedIndexMigrationKey
+Eq AttributeBasedIndexMigrationKey
+-&gt; (AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey -&gt; Ordering)
+-&gt; (AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey -&gt; Bool)
+-&gt; (AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey -&gt; Bool)
+-&gt; (AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey -&gt; Bool)
+-&gt; (AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey -&gt; Bool)
+-&gt; (AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey)
+-&gt; (AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey
+    -&gt; AttributeBasedIndexMigrationKey)
+-&gt; Ord AttributeBasedIndexMigrationKey
+AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Ordering
+AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+$cmin :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+max :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+$cmax :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey
+&gt;= :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+$c&gt;= :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+&gt; :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+$c&gt; :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+&lt;= :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+$c&lt;= :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+&lt; :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+$c&lt; :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Bool
+compare :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Ordering
+$ccompare :: AttributeBasedIndexMigrationKey
+-&gt; AttributeBasedIndexMigrationKey -&gt; Ordering
+$cp1Ord :: Eq AttributeBasedIndexMigrationKey
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679118853"><span id="local-6989586621679118855"><span id="local-6989586621679118857"><span class="annot"><span class="annottext">Int -&gt; AttributeBasedIndexMigrationKey -&gt; ShowS
+[AttributeBasedIndexMigrationKey] -&gt; ShowS
+AttributeBasedIndexMigrationKey -&gt; String
+(Int -&gt; AttributeBasedIndexMigrationKey -&gt; ShowS)
+-&gt; (AttributeBasedIndexMigrationKey -&gt; String)
+-&gt; ([AttributeBasedIndexMigrationKey] -&gt; ShowS)
+-&gt; Show AttributeBasedIndexMigrationKey
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [AttributeBasedIndexMigrationKey] -&gt; ShowS
+$cshowList :: [AttributeBasedIndexMigrationKey] -&gt; ShowS
+show :: AttributeBasedIndexMigrationKey -&gt; String
+$cshow :: AttributeBasedIndexMigrationKey -&gt; String
+showsPrec :: Int -&gt; AttributeBasedIndexMigrationKey -&gt; ShowS
+$cshowsPrec :: Int -&gt; AttributeBasedIndexMigrationKey -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">type</span><span> </span><span id="NamedIndexMigrationKey"><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#NamedIndexMigrationKey"><span class="hs-identifier hs-var">NamedIndexMigrationKey</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-comment">{- |
+  Gets the 'IndexMigrationKey' for the 'IndexDefinition'
+-}</span><span>
+</span><span id="line-59"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexMigrationKey"><span class="hs-identifier hs-type">indexMigrationKey</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexMigrationKey"><span class="hs-identifier hs-type">IndexMigrationKey</span></a></span><span>
+</span><span id="line-60"></span><span id="indexMigrationKey"><span class="annot"><span class="annottext">indexMigrationKey :: IndexDefinition -&gt; IndexMigrationKey
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexMigrationKey"><span class="hs-identifier hs-var hs-var">indexMigrationKey</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IndexDefinition -&gt; IndexMigrationKey
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#_indexMigrationKey"><span class="hs-identifier hs-var hs-var">_indexMigrationKey</span></a></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="hs-comment">{- |
+  Gets the SQL expression that will be used to add the index to the specified
+  table.
+-}</span><span>
+</span><span id="line-66"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexCreateExpr"><span class="hs-identifier hs-type">indexCreateExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Qualified.html#Qualified"><span class="hs-identifier hs-type">Expr.Qualified</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.TableName.html#TableName"><span class="hs-identifier hs-type">Expr.TableName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Index.html#CreateIndexExpr"><span class="hs-identifier hs-type">Expr.CreateIndexExpr</span></a></span><span>
+</span><span id="line-67"></span><span id="indexCreateExpr"><span class="annot"><span class="annottext">indexCreateExpr :: IndexDefinition -&gt; Qualified TableName -&gt; CreateIndexExpr
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexCreateExpr"><span class="hs-identifier hs-var hs-var">indexCreateExpr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IndexDefinition -&gt; Qualified TableName -&gt; CreateIndexExpr
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#_indexCreateExpr"><span class="hs-identifier hs-var hs-var">_indexCreateExpr</span></a></span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="hs-comment">{- |
+  Constructs an 'IndexDefinition' for a @UNIQUE@ index on the given
+  columns.
+-}</span><span>
+</span><span id="line-73"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#nonUniqueIndex"><span class="hs-identifier hs-type">nonUniqueIndex</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldName"><span class="hs-identifier hs-type">FieldDefinition.FieldName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span>
+</span><span id="line-74"></span><span id="nonUniqueIndex"><span class="annot"><span class="annottext">nonUniqueIndex :: NonEmpty FieldName -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#nonUniqueIndex"><span class="hs-identifier hs-var hs-var">nonUniqueIndex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-75"></span><span>  </span><span class="annot"><span class="annottext">IndexUniqueness -&gt; NonEmpty FieldName -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkIndexDefinition"><span class="hs-identifier hs-var">mkIndexDefinition</span></a></span><span> </span><span class="annot"><span class="annottext">IndexUniqueness
+</span><a href="Orville.PostgreSQL.Internal.Expr.Index.html#NonUniqueIndex"><span class="hs-identifier hs-var">Expr.NonUniqueIndex</span></a></span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span class="hs-comment">{- |
+  Constructs an 'IndexDefinition' for a @UNIQUE@ index with given SQL and
+  index name
+-}</span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#nonUniqueNamedIndex"><span class="hs-identifier hs-type">nonUniqueNamedIndex</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span>
+</span><span id="line-82"></span><span id="nonUniqueNamedIndex"><span class="annot"><span class="annottext">nonUniqueNamedIndex :: String -&gt; RawSql -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#nonUniqueNamedIndex"><span class="hs-identifier hs-var hs-var">nonUniqueNamedIndex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-83"></span><span>  </span><span class="annot"><span class="annottext">IndexUniqueness -&gt; String -&gt; RawSql -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkNamedIndexDefinition"><span class="hs-identifier hs-var">mkNamedIndexDefinition</span></a></span><span> </span><span class="annot"><span class="annottext">IndexUniqueness
+</span><a href="Orville.PostgreSQL.Internal.Expr.Index.html#NonUniqueIndex"><span class="hs-identifier hs-var">Expr.NonUniqueIndex</span></a></span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span class="hs-comment">{- |
+  Constructs an 'IndexDefinition' for a @UNIQUE@ index on the given
+  columns.
+-}</span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#uniqueIndex"><span class="hs-identifier hs-type">uniqueIndex</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldName"><span class="hs-identifier hs-type">FieldDefinition.FieldName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span>
+</span><span id="line-90"></span><span id="uniqueIndex"><span class="annot"><span class="annottext">uniqueIndex :: NonEmpty FieldName -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#uniqueIndex"><span class="hs-identifier hs-var hs-var">uniqueIndex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="annottext">IndexUniqueness -&gt; NonEmpty FieldName -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkIndexDefinition"><span class="hs-identifier hs-var">mkIndexDefinition</span></a></span><span> </span><span class="annot"><span class="annottext">IndexUniqueness
+</span><a href="Orville.PostgreSQL.Internal.Expr.Index.html#UniqueIndex"><span class="hs-identifier hs-var">Expr.UniqueIndex</span></a></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">{- |
+  Constructs an 'IndexDefinition' for a @UNIQUE@ index on the given
+  columns.
+-}</span><span>
+</span><span id="line-97"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#uniqueNamedIndex"><span class="hs-identifier hs-type">uniqueNamedIndex</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span>
+</span><span id="line-98"></span><span id="uniqueNamedIndex"><span class="annot"><span class="annottext">uniqueNamedIndex :: String -&gt; RawSql -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#uniqueNamedIndex"><span class="hs-identifier hs-var hs-var">uniqueNamedIndex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-99"></span><span>  </span><span class="annot"><span class="annottext">IndexUniqueness -&gt; String -&gt; RawSql -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkNamedIndexDefinition"><span class="hs-identifier hs-var">mkNamedIndexDefinition</span></a></span><span> </span><span class="annot"><span class="annottext">IndexUniqueness
+</span><a href="Orville.PostgreSQL.Internal.Expr.Index.html#UniqueIndex"><span class="hs-identifier hs-var">Expr.UniqueIndex</span></a></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="hs-comment">{- |
+  Constructs an 'IndexDefinition' for an index on the given columns with the
+  given uniquness.
+-}</span><span>
+</span><span id="line-105"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkIndexDefinition"><span class="hs-identifier hs-type">mkIndexDefinition</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-106"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Index.html#IndexUniqueness"><span class="hs-identifier hs-type">Expr.IndexUniqueness</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-107"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldName"><span class="hs-identifier hs-type">FieldDefinition.FieldName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-108"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span>
+</span><span id="line-109"></span><span id="mkIndexDefinition"><span class="annot"><span class="annottext">mkIndexDefinition :: IndexUniqueness -&gt; NonEmpty FieldName -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkIndexDefinition"><span class="hs-identifier hs-var hs-var">mkIndexDefinition</span></a></span></span><span> </span><span id="local-6989586621679118851"><span class="annot"><span class="annottext">IndexUniqueness
+</span><a href="#local-6989586621679118851"><span class="hs-identifier hs-var">uniqueness</span></a></span></span><span> </span><span id="local-6989586621679118850"><span class="annot"><span class="annottext">NonEmpty FieldName
+</span><a href="#local-6989586621679118850"><span class="hs-identifier hs-var">fieldNames</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-110"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679118849"><span class="annot"><span class="annottext">expr :: Qualified TableName -&gt; CreateIndexExpr
+</span><a href="#local-6989586621679118849"><span class="hs-identifier hs-var hs-var">expr</span></a></span></span><span> </span><span id="local-6989586621679118848"><span class="annot"><span class="annottext">Qualified TableName
+</span><a href="#local-6989586621679118848"><span class="hs-identifier hs-var">tableName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-111"></span><span>        </span><span class="annot"><span class="annottext">IndexUniqueness
+-&gt; Qualified TableName -&gt; NonEmpty ColumnName -&gt; CreateIndexExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Index.html#createIndexExpr"><span class="hs-identifier hs-var">Expr.createIndexExpr</span></a></span><span>
+</span><span id="line-112"></span><span>          </span><span class="annot"><span class="annottext">IndexUniqueness
+</span><a href="#local-6989586621679118851"><span class="hs-identifier hs-var">uniqueness</span></a></span><span>
+</span><span id="line-113"></span><span>          </span><span class="annot"><span class="annottext">Qualified TableName
+</span><a href="#local-6989586621679118848"><span class="hs-identifier hs-var">tableName</span></a></span><span>
+</span><span id="line-114"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(FieldName -&gt; ColumnName)
+-&gt; NonEmpty FieldName -&gt; NonEmpty ColumnName
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">FieldName -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldNameToColumnName"><span class="hs-identifier hs-var">FieldDefinition.fieldNameToColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty FieldName
+</span><a href="#local-6989586621679118850"><span class="hs-identifier hs-var">fieldNames</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-115"></span><span>
+</span><span id="line-116"></span><span>      </span><span id="local-6989586621679118845"><span class="annot"><span class="annottext">migrationKey :: AttributeBasedIndexMigrationKey
+</span><a href="#local-6989586621679118845"><span class="hs-identifier hs-var hs-var">migrationKey</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-117"></span><span>        </span><span class="annot"><span class="annottext">AttributeBasedIndexMigrationKey :: IndexUniqueness -&gt; [FieldName] -&gt; AttributeBasedIndexMigrationKey
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#AttributeBasedIndexMigrationKey"><span class="hs-identifier hs-type">AttributeBasedIndexMigrationKey</span></a></span><span>
+</span><span id="line-118"></span><span>          </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">indexKeyUniqueness :: IndexUniqueness
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexKeyUniqueness"><span class="hs-identifier hs-var">indexKeyUniqueness</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IndexUniqueness
+</span><a href="#local-6989586621679118851"><span class="hs-identifier hs-var">uniqueness</span></a></span><span>
+</span><span id="line-119"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">indexKeyColumns :: [FieldName]
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#indexKeyColumns"><span class="hs-identifier hs-var">indexKeyColumns</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NonEmpty FieldName -&gt; [FieldName]
+forall a. NonEmpty a -&gt; [a]
+</span><span class="hs-identifier hs-var">NEL.toList</span></span><span> </span><span class="annot"><span class="annottext">NonEmpty FieldName
+</span><a href="#local-6989586621679118850"><span class="hs-identifier hs-var">fieldNames</span></a></span><span>
+</span><span id="line-120"></span><span>          </span><span class="hs-special">}</span><span>
+</span><span id="line-121"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">IndexDefinition :: (Qualified TableName -&gt; CreateIndexExpr)
+-&gt; IndexMigrationKey -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span>
+</span><span id="line-122"></span><span>        </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">_indexCreateExpr :: Qualified TableName -&gt; CreateIndexExpr
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#_indexCreateExpr"><span class="hs-identifier hs-var">_indexCreateExpr</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Qualified TableName -&gt; CreateIndexExpr
+</span><a href="#local-6989586621679118849"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-123"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">_indexMigrationKey :: IndexMigrationKey
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#_indexMigrationKey"><span class="hs-identifier hs-var">_indexMigrationKey</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">AttributeBasedIndexMigrationKey -&gt; IndexMigrationKey
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#AttributeBasedIndexKey"><span class="hs-identifier hs-var">AttributeBasedIndexKey</span></a></span><span> </span><span class="annot"><span class="annottext">AttributeBasedIndexMigrationKey
+</span><a href="#local-6989586621679118845"><span class="hs-identifier hs-var">migrationKey</span></a></span><span>
+</span><span id="line-124"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span class="hs-comment">{- |
+  Constructs an 'IndexDefinition' for an index with the given uniquness, given
+  name, and given SQL.
+-}</span><span>
+</span><span id="line-130"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkNamedIndexDefinition"><span class="hs-identifier hs-type">mkNamedIndexDefinition</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-131"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Index.html#IndexUniqueness"><span class="hs-identifier hs-type">Expr.IndexUniqueness</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-132"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-133"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-134"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span>
+</span><span id="line-135"></span><span id="mkNamedIndexDefinition"><span class="annot"><span class="annottext">mkNamedIndexDefinition :: IndexUniqueness -&gt; String -&gt; RawSql -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#mkNamedIndexDefinition"><span class="hs-identifier hs-var hs-var">mkNamedIndexDefinition</span></a></span></span><span> </span><span id="local-6989586621679118843"><span class="annot"><span class="annottext">IndexUniqueness
+</span><a href="#local-6989586621679118843"><span class="hs-identifier hs-var">uniqueness</span></a></span></span><span> </span><span id="local-6989586621679118842"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679118842"><span class="hs-identifier hs-var">indexName</span></a></span></span><span> </span><span id="local-6989586621679118841"><span class="annot"><span class="annottext">RawSql
+</span><a href="#local-6989586621679118841"><span class="hs-identifier hs-var">indexSql</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-136"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679118840"><span class="annot"><span class="annottext">expr :: Qualified TableName -&gt; CreateIndexExpr
+</span><a href="#local-6989586621679118840"><span class="hs-identifier hs-var hs-var">expr</span></a></span></span><span> </span><span id="local-6989586621679118839"><span class="annot"><span class="annottext">Qualified TableName
+</span><a href="#local-6989586621679118839"><span class="hs-identifier hs-var">tableName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-137"></span><span>        </span><span class="annot"><span class="annottext">IndexUniqueness
+-&gt; Qualified TableName -&gt; IndexName -&gt; RawSql -&gt; CreateIndexExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Index.html#createNamedIndexExpr"><span class="hs-identifier hs-var">Expr.createNamedIndexExpr</span></a></span><span>
+</span><span id="line-138"></span><span>          </span><span class="annot"><span class="annottext">IndexUniqueness
+</span><a href="#local-6989586621679118843"><span class="hs-identifier hs-var">uniqueness</span></a></span><span>
+</span><span id="line-139"></span><span>          </span><span class="annot"><span class="annottext">Qualified TableName
+</span><a href="#local-6989586621679118839"><span class="hs-identifier hs-var">tableName</span></a></span><span>
+</span><span id="line-140"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; IndexName
+</span><a href="Orville.PostgreSQL.Internal.Expr.Name.IndexName.html#indexName"><span class="hs-identifier hs-var">Expr.indexName</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679118842"><span class="hs-identifier hs-var">indexName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-141"></span><span>          </span><span class="annot"><span class="annottext">RawSql
+</span><a href="#local-6989586621679118841"><span class="hs-identifier hs-var">indexSql</span></a></span><span>
+</span><span id="line-142"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">IndexDefinition :: (Qualified TableName -&gt; CreateIndexExpr)
+-&gt; IndexMigrationKey -&gt; IndexDefinition
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#IndexDefinition"><span class="hs-identifier hs-type">IndexDefinition</span></a></span><span>
+</span><span id="line-143"></span><span>        </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">_indexCreateExpr :: Qualified TableName -&gt; CreateIndexExpr
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#_indexCreateExpr"><span class="hs-identifier hs-var">_indexCreateExpr</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Qualified TableName -&gt; CreateIndexExpr
+</span><a href="#local-6989586621679118840"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-144"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">_indexMigrationKey :: IndexMigrationKey
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#_indexMigrationKey"><span class="hs-identifier hs-var">_indexMigrationKey</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; IndexMigrationKey
+</span><a href="Orville.PostgreSQL.Internal.IndexDefinition.html#NamedIndexKey"><span class="hs-identifier hs-var">NamedIndexKey</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679118842"><span class="hs-identifier hs-var">indexName</span></a></span><span>
+</span><span id="line-145"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-146"></span></pre></body></html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Expr.Where.ComparisonOperator
+Copyright : Flipstone Technology Partners 2016-2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier">ComparisonOperator</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#equalsOp"><span class="hs-identifier">equalsOp</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#notEqualsOp"><span class="hs-identifier">notEqualsOp</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOp"><span class="hs-identifier">greaterThanOp</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOp"><span class="hs-identifier">lessThanOp</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOrEqualsOp"><span class="hs-identifier">greaterThanOrEqualsOp</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOrEqualsOp"><span class="hs-identifier">lessThanOrEqualsOp</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#likeOp"><span class="hs-identifier">likeOp</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#iLikeOp"><span class="hs-identifier">iLikeOp</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">newtype</span><span> </span><span id="ComparisonOperator"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span></span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="ComparisonOperator"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679115222"><span id="local-6989586621679115224"><span class="annot"><span class="annottext">RawSql -&gt; ComparisonOperator
+ComparisonOperator -&gt; RawSql
+(ComparisonOperator -&gt; RawSql)
+-&gt; (RawSql -&gt; ComparisonOperator)
+-&gt; SqlExpression ComparisonOperator
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; ComparisonOperator
+$cunsafeFromRawSql :: RawSql -&gt; ComparisonOperator
+toRawSql :: ComparisonOperator -&gt; RawSql
+$ctoRawSql :: ComparisonOperator -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#equalsOp"><span class="hs-identifier hs-type">equalsOp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-type">ComparisonOperator</span></a></span><span>
+</span><span id="line-28"></span><span id="equalsOp"><span class="annot"><span class="annottext">equalsOp :: ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#equalsOp"><span class="hs-identifier hs-var hs-var">equalsOp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-29"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;=&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#notEqualsOp"><span class="hs-identifier hs-type">notEqualsOp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-type">ComparisonOperator</span></a></span><span>
+</span><span id="line-32"></span><span id="notEqualsOp"><span class="annot"><span class="annottext">notEqualsOp :: ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#notEqualsOp"><span class="hs-identifier hs-var hs-var">notEqualsOp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-33"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&lt;&gt;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOp"><span class="hs-identifier hs-type">greaterThanOp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-type">ComparisonOperator</span></a></span><span>
+</span><span id="line-36"></span><span id="greaterThanOp"><span class="annot"><span class="annottext">greaterThanOp :: ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOp"><span class="hs-identifier hs-var hs-var">greaterThanOp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-37"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&gt;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOp"><span class="hs-identifier hs-type">lessThanOp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-type">ComparisonOperator</span></a></span><span>
+</span><span id="line-40"></span><span id="lessThanOp"><span class="annot"><span class="annottext">lessThanOp :: ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOp"><span class="hs-identifier hs-var hs-var">lessThanOp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-41"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&lt;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOrEqualsOp"><span class="hs-identifier hs-type">greaterThanOrEqualsOp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-type">ComparisonOperator</span></a></span><span>
+</span><span id="line-44"></span><span id="greaterThanOrEqualsOp"><span class="annot"><span class="annottext">greaterThanOrEqualsOp :: ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#greaterThanOrEqualsOp"><span class="hs-identifier hs-var hs-var">greaterThanOrEqualsOp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-45"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&gt;=&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOrEqualsOp"><span class="hs-identifier hs-type">lessThanOrEqualsOp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-type">ComparisonOperator</span></a></span><span>
+</span><span id="line-48"></span><span id="lessThanOrEqualsOp"><span class="annot"><span class="annottext">lessThanOrEqualsOp :: ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#lessThanOrEqualsOp"><span class="hs-identifier hs-var hs-var">lessThanOrEqualsOp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-49"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&lt;=&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#likeOp"><span class="hs-identifier hs-type">likeOp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-type">ComparisonOperator</span></a></span><span>
+</span><span id="line-52"></span><span id="likeOp"><span class="annot"><span class="annottext">likeOp :: ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#likeOp"><span class="hs-identifier hs-var hs-var">likeOp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-53"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;LIKE&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#iLikeOp"><span class="hs-identifier hs-type">iLikeOp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-type">ComparisonOperator</span></a></span><span>
+</span><span id="line-56"></span><span id="iLikeOp"><span class="annot"><span class="annottext">iLikeOp :: ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#iLikeOp"><span class="hs-identifier hs-var hs-var">iLikeOp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-57"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ComparisonOperator
+</span><a href="Orville.PostgreSQL.Internal.Expr.Where.ComparisonOperator.html#ComparisonOperator"><span class="hs-identifier hs-var">ComparisonOperator</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;ILIKE&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span></pre></body></html>

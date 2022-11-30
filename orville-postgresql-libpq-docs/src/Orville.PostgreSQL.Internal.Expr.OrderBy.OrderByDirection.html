@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span id="%24maxtag_Ktsc3bTuOtkLuD5lN1s4XB"><span id="%24tag2con_Ktsc3bTuOtkLuD5lN1s4XB"><span id="%24con2tag_Ktsc3bTuOtkLuD5lN1s4XB"></span></span></span><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Expr.OrderBy.OrderByDirection
+Copyright : Flipstone Technology Partners 2016-2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier">OrderByDirection</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#NullsOrder"><span class="hs-identifier">NullsOrder</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#ascendingOrder"><span class="hs-identifier">ascendingOrder</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#descendingOrder"><span class="hs-identifier">descendingOrder</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#ascendingOrderWith"><span class="hs-identifier">ascendingOrderWith</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#descendingOrderWith"><span class="hs-identifier">descendingOrderWith</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">newtype</span><span> </span><span id="OrderByDirection"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-var">OrderByDirection</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="OrderByDirection"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-var">OrderByDirection</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679115340"><span id="local-6989586621679115342"><span class="annot"><span class="annottext">RawSql -&gt; OrderByDirection
+OrderByDirection -&gt; RawSql
+(OrderByDirection -&gt; RawSql)
+-&gt; (RawSql -&gt; OrderByDirection) -&gt; SqlExpression OrderByDirection
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; OrderByDirection
+$cunsafeFromRawSql :: RawSql -&gt; OrderByDirection
+toRawSql :: OrderByDirection -&gt; RawSql
+$ctoRawSql :: OrderByDirection -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">data</span><span> </span><span id="NullsOrder"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#NullsOrder"><span class="hs-identifier hs-var">NullsOrder</span></a></span></span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="NullsFirst"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#NullsFirst"><span class="hs-identifier hs-var">NullsFirst</span></a></span></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="NullsLast"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#NullsLast"><span class="hs-identifier hs-var">NullsLast</span></a></span></span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679115333"><span id="local-6989586621679115335"><span class="annot"><span class="annottext">NullsOrder -&gt; NullsOrder -&gt; Bool
+(NullsOrder -&gt; NullsOrder -&gt; Bool)
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; Bool) -&gt; Eq NullsOrder
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: NullsOrder -&gt; NullsOrder -&gt; Bool
+$c/= :: NullsOrder -&gt; NullsOrder -&gt; Bool
+== :: NullsOrder -&gt; NullsOrder -&gt; Bool
+$c== :: NullsOrder -&gt; NullsOrder -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679115326"><span id="local-6989586621679115328"><span id="local-6989586621679115330"><span class="annot"><span class="annottext">Int -&gt; NullsOrder -&gt; ShowS
+[NullsOrder] -&gt; ShowS
+NullsOrder -&gt; String
+(Int -&gt; NullsOrder -&gt; ShowS)
+-&gt; (NullsOrder -&gt; String)
+-&gt; ([NullsOrder] -&gt; ShowS)
+-&gt; Show NullsOrder
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [NullsOrder] -&gt; ShowS
+$cshowList :: [NullsOrder] -&gt; ShowS
+show :: NullsOrder -&gt; String
+$cshow :: NullsOrder -&gt; String
+showsPrec :: Int -&gt; NullsOrder -&gt; ShowS
+$cshowsPrec :: Int -&gt; NullsOrder -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679115310"><span id="local-6989586621679115312"><span id="local-6989586621679115314"><span id="local-6989586621679115316"><span id="local-6989586621679115318"><span id="local-6989586621679115320"><span id="local-6989586621679115322"><span class="annot"><span class="annottext">Eq NullsOrder
+Eq NullsOrder
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; Ordering)
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; Bool)
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; Bool)
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; Bool)
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; Bool)
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; NullsOrder)
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; NullsOrder)
+-&gt; Ord NullsOrder
+NullsOrder -&gt; NullsOrder -&gt; Bool
+NullsOrder -&gt; NullsOrder -&gt; Ordering
+NullsOrder -&gt; NullsOrder -&gt; NullsOrder
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: NullsOrder -&gt; NullsOrder -&gt; NullsOrder
+$cmin :: NullsOrder -&gt; NullsOrder -&gt; NullsOrder
+max :: NullsOrder -&gt; NullsOrder -&gt; NullsOrder
+$cmax :: NullsOrder -&gt; NullsOrder -&gt; NullsOrder
+&gt;= :: NullsOrder -&gt; NullsOrder -&gt; Bool
+$c&gt;= :: NullsOrder -&gt; NullsOrder -&gt; Bool
+&gt; :: NullsOrder -&gt; NullsOrder -&gt; Bool
+$c&gt; :: NullsOrder -&gt; NullsOrder -&gt; Bool
+&lt;= :: NullsOrder -&gt; NullsOrder -&gt; Bool
+$c&lt;= :: NullsOrder -&gt; NullsOrder -&gt; Bool
+&lt; :: NullsOrder -&gt; NullsOrder -&gt; Bool
+$c&lt; :: NullsOrder -&gt; NullsOrder -&gt; Bool
+compare :: NullsOrder -&gt; NullsOrder -&gt; Ordering
+$ccompare :: NullsOrder -&gt; NullsOrder -&gt; Ordering
+$cp1Ord :: Eq NullsOrder
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679115293"><span id="local-6989586621679115295"><span id="local-6989586621679115297"><span id="local-6989586621679115299"><span id="local-6989586621679115301"><span id="local-6989586621679115303"><span id="local-6989586621679115305"><span id="local-6989586621679115307"><span class="annot"><span class="annottext">Int -&gt; NullsOrder
+NullsOrder -&gt; Int
+NullsOrder -&gt; [NullsOrder]
+NullsOrder -&gt; NullsOrder
+NullsOrder -&gt; NullsOrder -&gt; [NullsOrder]
+NullsOrder -&gt; NullsOrder -&gt; NullsOrder -&gt; [NullsOrder]
+(NullsOrder -&gt; NullsOrder)
+-&gt; (NullsOrder -&gt; NullsOrder)
+-&gt; (Int -&gt; NullsOrder)
+-&gt; (NullsOrder -&gt; Int)
+-&gt; (NullsOrder -&gt; [NullsOrder])
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; [NullsOrder])
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; [NullsOrder])
+-&gt; (NullsOrder -&gt; NullsOrder -&gt; NullsOrder -&gt; [NullsOrder])
+-&gt; Enum NullsOrder
+forall a.
+(a -&gt; a)
+-&gt; (a -&gt; a)
+-&gt; (Int -&gt; a)
+-&gt; (a -&gt; Int)
+-&gt; (a -&gt; [a])
+-&gt; (a -&gt; a -&gt; [a])
+-&gt; (a -&gt; a -&gt; [a])
+-&gt; (a -&gt; a -&gt; a -&gt; [a])
+-&gt; Enum a
+enumFromThenTo :: NullsOrder -&gt; NullsOrder -&gt; NullsOrder -&gt; [NullsOrder]
+$cenumFromThenTo :: NullsOrder -&gt; NullsOrder -&gt; NullsOrder -&gt; [NullsOrder]
+enumFromTo :: NullsOrder -&gt; NullsOrder -&gt; [NullsOrder]
+$cenumFromTo :: NullsOrder -&gt; NullsOrder -&gt; [NullsOrder]
+enumFromThen :: NullsOrder -&gt; NullsOrder -&gt; [NullsOrder]
+$cenumFromThen :: NullsOrder -&gt; NullsOrder -&gt; [NullsOrder]
+enumFrom :: NullsOrder -&gt; [NullsOrder]
+$cenumFrom :: NullsOrder -&gt; [NullsOrder]
+fromEnum :: NullsOrder -&gt; Int
+$cfromEnum :: NullsOrder -&gt; Int
+toEnum :: Int -&gt; NullsOrder
+$ctoEnum :: Int -&gt; NullsOrder
+pred :: NullsOrder -&gt; NullsOrder
+$cpred :: NullsOrder -&gt; NullsOrder
+succ :: NullsOrder -&gt; NullsOrder
+$csucc :: NullsOrder -&gt; NullsOrder
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Enum</span></span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679115288"><span id="local-6989586621679115290"><span class="annot"><span class="annottext">NullsOrder
+NullsOrder -&gt; NullsOrder -&gt; Bounded NullsOrder
+forall a. a -&gt; a -&gt; Bounded a
+maxBound :: NullsOrder
+$cmaxBound :: NullsOrder
+minBound :: NullsOrder
+$cminBound :: NullsOrder
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Bounded</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#ascendingOrder"><span class="hs-identifier hs-type">ascendingOrder</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-type">OrderByDirection</span></a></span><span>
+</span><span id="line-29"></span><span id="ascendingOrder"><span class="annot"><span class="annottext">ascendingOrder :: OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#ascendingOrder"><span class="hs-identifier hs-var hs-var">ascendingOrder</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-var">OrderByDirection</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; OrderByDirection) -&gt; RawSql -&gt; OrderByDirection
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;ASC&quot;</span></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#descendingOrder"><span class="hs-identifier hs-type">descendingOrder</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-type">OrderByDirection</span></a></span><span>
+</span><span id="line-32"></span><span id="descendingOrder"><span class="annot"><span class="annottext">descendingOrder :: OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#descendingOrder"><span class="hs-identifier hs-var hs-var">descendingOrder</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-var">OrderByDirection</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; OrderByDirection) -&gt; RawSql -&gt; OrderByDirection
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;DESC&quot;</span></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#ascendingOrderWith"><span class="hs-identifier hs-type">ascendingOrderWith</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#NullsOrder"><span class="hs-identifier hs-type">NullsOrder</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-type">OrderByDirection</span></a></span><span>
+</span><span id="line-35"></span><span id="ascendingOrderWith"><span class="annot"><span class="annottext">ascendingOrderWith :: NullsOrder -&gt; OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#ascendingOrderWith"><span class="hs-identifier hs-var hs-var">ascendingOrderWith</span></a></span></span><span> </span><span id="local-6989586621679115285"><span class="annot"><span class="annottext">NullsOrder
+</span><a href="#local-6989586621679115285"><span class="hs-identifier hs-var">no</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-36"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-var">OrderByDirection</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; OrderByDirection) -&gt; RawSql -&gt; OrderByDirection
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">OrderByDirection -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#ascendingOrder"><span class="hs-identifier hs-var">ascendingOrder</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">NullsOrder -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#nullsOrder"><span class="hs-identifier hs-var">nullsOrder</span></a></span><span> </span><span class="annot"><span class="annottext">NullsOrder
+</span><a href="#local-6989586621679115285"><span class="hs-identifier hs-var">no</span></a></span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#descendingOrderWith"><span class="hs-identifier hs-type">descendingOrderWith</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#NullsOrder"><span class="hs-identifier hs-type">NullsOrder</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-type">OrderByDirection</span></a></span><span>
+</span><span id="line-39"></span><span id="descendingOrderWith"><span class="annot"><span class="annottext">descendingOrderWith :: NullsOrder -&gt; OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#descendingOrderWith"><span class="hs-identifier hs-var hs-var">descendingOrderWith</span></a></span></span><span> </span><span id="local-6989586621679115281"><span class="annot"><span class="annottext">NullsOrder
+</span><a href="#local-6989586621679115281"><span class="hs-identifier hs-var">no</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-40"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-var">OrderByDirection</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; OrderByDirection) -&gt; RawSql -&gt; OrderByDirection
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">OrderByDirection -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">OrderByDirection
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#descendingOrder"><span class="hs-identifier hs-var">descendingOrder</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">NullsOrder -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#nullsOrder"><span class="hs-identifier hs-var">nullsOrder</span></a></span><span> </span><span class="annot"><span class="annottext">NullsOrder
+</span><a href="#local-6989586621679115281"><span class="hs-identifier hs-var">no</span></a></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#nullsOrder"><span class="hs-identifier hs-type">nullsOrder</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#NullsOrder"><span class="hs-identifier hs-type">NullsOrder</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-43"></span><span id="nullsOrder"><span class="annot"><span class="annottext">nullsOrder :: NullsOrder -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#nullsOrder"><span class="hs-identifier hs-var hs-var">nullsOrder</span></a></span></span><span> </span><span id="local-6989586621679115280"><span class="annot"><span class="annottext">NullsOrder
+</span><a href="#local-6989586621679115280"><span class="hs-identifier hs-var">no</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">NullsOrder
+</span><a href="#local-6989586621679115280"><span class="hs-identifier hs-var">no</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-44"></span><span>  </span><span class="annot"><span class="annottext">NullsOrder
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#NullsFirst"><span class="hs-identifier hs-var">NullsFirst</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;NULLS FIRST&quot;</span></span><span>
+</span><span id="line-45"></span><span>  </span><span class="annot"><span class="annottext">NullsOrder
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#NullsLast"><span class="hs-identifier hs-var">NullsLast</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;NULLS LAST&quot;</span></span><span>
+</span><span id="line-46"></span></pre></body></html>

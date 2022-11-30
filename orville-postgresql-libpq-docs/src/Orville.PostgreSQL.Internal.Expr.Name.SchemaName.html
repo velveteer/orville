@@ -1,0 +1,50 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Expr.Name.SchemaName
+Copyright : Flipstone Technology Partners 2016-2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Name.SchemaName</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.SchemaName.html#SchemaName"><span class="hs-identifier">SchemaName</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.SchemaName.html#schemaName"><span class="hs-identifier">schemaName</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Identifier.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Name.Identifier</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Identifier.html#Identifier"><span class="hs-identifier">Identifier</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Identifier.html#IdentifierExpression"><span class="hs-identifier">IdentifierExpression</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Identifier.html#identifier"><span class="hs-identifier">identifier</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">newtype</span><span> </span><span id="SchemaName"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.SchemaName.html#SchemaName"><span class="hs-identifier hs-var">SchemaName</span></a></span></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="SchemaName"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.SchemaName.html#SchemaName"><span class="hs-identifier hs-var">SchemaName</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Identifier.html#Identifier"><span class="hs-identifier hs-type">Identifier</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679115464"><span id="local-6989586621679115466"><span class="annot"><span class="annottext">RawSql -&gt; SchemaName
+SchemaName -&gt; RawSql
+(SchemaName -&gt; RawSql)
+-&gt; (RawSql -&gt; SchemaName) -&gt; SqlExpression SchemaName
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; SchemaName
+$cunsafeFromRawSql :: RawSql -&gt; SchemaName
+toRawSql :: SchemaName -&gt; RawSql
+$ctoRawSql :: SchemaName -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679115459"><span id="local-6989586621679115461"><span class="annot"><span class="annottext">Identifier -&gt; SchemaName
+SchemaName -&gt; Identifier
+(SchemaName -&gt; Identifier)
+-&gt; (Identifier -&gt; SchemaName) -&gt; IdentifierExpression SchemaName
+forall name.
+(name -&gt; Identifier)
+-&gt; (Identifier -&gt; name) -&gt; IdentifierExpression name
+fromIdentifier :: Identifier -&gt; SchemaName
+$cfromIdentifier :: Identifier -&gt; SchemaName
+toIdentifier :: SchemaName -&gt; Identifier
+$ctoIdentifier :: SchemaName -&gt; Identifier
+</span><a href="Orville.PostgreSQL.Internal.Expr.Name.Identifier.html#C%3AIdentifierExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">IdentifierExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.SchemaName.html#schemaName"><span class="hs-identifier hs-type">schemaName</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.SchemaName.html#SchemaName"><span class="hs-identifier hs-type">SchemaName</span></a></span><span>
+</span><span id="line-22"></span><span id="schemaName"><span class="annot"><span class="annottext">schemaName :: String -&gt; SchemaName
+</span><a href="Orville.PostgreSQL.Internal.Expr.Name.SchemaName.html#schemaName"><span class="hs-identifier hs-var hs-var">schemaName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-23"></span><span>  </span><span class="annot"><span class="annottext">Identifier -&gt; SchemaName
+</span><a href="Orville.PostgreSQL.Internal.Expr.Name.SchemaName.html#SchemaName"><span class="hs-identifier hs-var">SchemaName</span></a></span><span> </span><span class="annot"><span class="annottext">(Identifier -&gt; SchemaName)
+-&gt; (String -&gt; Identifier) -&gt; String -&gt; SchemaName
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Identifier
+</span><a href="Orville.PostgreSQL.Internal.Expr.Name.Identifier.html#identifier"><span class="hs-identifier hs-var">identifier</span></a></span><span>
+</span><span id="line-24"></span></pre></body></html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Expr.Query.TableExpr
+Copyright : Flipstone Technology Partners 2016-2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Query.TableExpr</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Query.TableExpr.html#TableExpr"><span class="hs-identifier">TableExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Query.TableExpr.html#tableExpr"><span class="hs-identifier">tableExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">catMaybes</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.GroupBy.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.GroupBy</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.GroupBy.GroupByClause.html#GroupByClause"><span class="hs-identifier">GroupByClause</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.LimitExpr.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.LimitExpr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.LimitExpr.html#LimitExpr"><span class="hs-identifier">LimitExpr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Name</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Qualified.html#Qualified"><span class="hs-identifier">Qualified</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.TableName.html#TableName"><span class="hs-identifier">TableName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OffsetExpr.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.OffsetExpr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OffsetExpr.html#OffsetExpr"><span class="hs-identifier">OffsetExpr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.OrderBy</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByClause.html#OrderByClause"><span class="hs-identifier">OrderByClause</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.WhereClause.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Where.WhereClause</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.WhereClause.html#WhereClause"><span class="hs-identifier">WhereClause</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">newtype</span><span> </span><span id="TableExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Query.TableExpr.html#TableExpr"><span class="hs-identifier hs-var">TableExpr</span></a></span></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="TableExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Query.TableExpr.html#TableExpr"><span class="hs-identifier hs-var">TableExpr</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116794"><span id="local-6989586621679116796"><span class="annot"><span class="annottext">RawSql -&gt; TableExpr
+TableExpr -&gt; RawSql
+(TableExpr -&gt; RawSql)
+-&gt; (RawSql -&gt; TableExpr) -&gt; SqlExpression TableExpr
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; TableExpr
+$cunsafeFromRawSql :: RawSql -&gt; TableExpr
+toRawSql :: TableExpr -&gt; RawSql
+$ctoRawSql :: TableExpr -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Query.TableExpr.html#tableExpr"><span class="hs-identifier hs-type">tableExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-29"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Qualified.html#Qualified"><span class="hs-identifier hs-type">Qualified</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.TableName.html#TableName"><span class="hs-identifier hs-type">TableName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-30"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.WhereClause.html#WhereClause"><span class="hs-identifier hs-type">WhereClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-31"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByClause.html#OrderByClause"><span class="hs-identifier hs-type">OrderByClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-32"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.GroupBy.GroupByClause.html#GroupByClause"><span class="hs-identifier hs-type">GroupByClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-33"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.LimitExpr.html#LimitExpr"><span class="hs-identifier hs-type">LimitExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-34"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OffsetExpr.html#OffsetExpr"><span class="hs-identifier hs-type">OffsetExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-35"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Query.TableExpr.html#TableExpr"><span class="hs-identifier hs-type">TableExpr</span></a></span><span>
+</span><span id="line-36"></span><span id="tableExpr"><span class="annot"><span class="annottext">tableExpr :: Qualified TableName
+-&gt; Maybe WhereClause
+-&gt; Maybe OrderByClause
+-&gt; Maybe GroupByClause
+-&gt; Maybe LimitExpr
+-&gt; Maybe OffsetExpr
+-&gt; TableExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Query.TableExpr.html#tableExpr"><span class="hs-identifier hs-var hs-var">tableExpr</span></a></span></span><span>
+</span><span id="line-37"></span><span>  </span><span id="local-6989586621679116792"><span class="annot"><span class="annottext">Qualified TableName
+</span><a href="#local-6989586621679116792"><span class="hs-identifier hs-var">tableName</span></a></span></span><span>
+</span><span id="line-38"></span><span>  </span><span id="local-6989586621679116791"><span class="annot"><span class="annottext">Maybe WhereClause
+</span><a href="#local-6989586621679116791"><span class="hs-identifier hs-var">maybeWhereClause</span></a></span></span><span>
+</span><span id="line-39"></span><span>  </span><span id="local-6989586621679116790"><span class="annot"><span class="annottext">Maybe OrderByClause
+</span><a href="#local-6989586621679116790"><span class="hs-identifier hs-var">maybeOrderByClause</span></a></span></span><span>
+</span><span id="line-40"></span><span>  </span><span id="local-6989586621679116789"><span class="annot"><span class="annottext">Maybe GroupByClause
+</span><a href="#local-6989586621679116789"><span class="hs-identifier hs-var">maybeGroupByClause</span></a></span></span><span>
+</span><span id="line-41"></span><span>  </span><span id="local-6989586621679116788"><span class="annot"><span class="annottext">Maybe LimitExpr
+</span><a href="#local-6989586621679116788"><span class="hs-identifier hs-var">maybeLimitExpr</span></a></span></span><span>
+</span><span id="line-42"></span><span>  </span><span id="local-6989586621679116787"><span class="annot"><span class="annottext">Maybe OffsetExpr
+</span><a href="#local-6989586621679116787"><span class="hs-identifier hs-var">maybeOffsetExpr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-43"></span><span>    </span><span class="annot"><span class="annottext">RawSql -&gt; TableExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Query.TableExpr.html#TableExpr"><span class="hs-identifier hs-var">TableExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; TableExpr) -&gt; RawSql -&gt; TableExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-44"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; [RawSql] -&gt; RawSql
+forall sql (f :: * -&gt; *).
+(SqlExpression sql, Foldable f) =&gt;
+RawSql -&gt; f sql -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#intercalate"><span class="hs-identifier hs-var">RawSql.intercalate</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span> </span><span class="annot"><span class="annottext">([RawSql] -&gt; RawSql) -&gt; [RawSql] -&gt; RawSql
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-45"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Qualified TableName -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">Qualified TableName
+</span><a href="#local-6989586621679116792"><span class="hs-identifier hs-var">tableName</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; [RawSql] -&gt; [RawSql]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span>
+</span><span id="line-46"></span><span>        </span><span class="annot"><span class="annottext">[Maybe RawSql] -&gt; [RawSql]
+forall a. [Maybe a] -&gt; [a]
+</span><span class="hs-identifier hs-var">catMaybes</span></span><span>
+</span><span id="line-47"></span><span>          </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">WhereClause -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">(WhereClause -&gt; RawSql) -&gt; Maybe WhereClause -&gt; Maybe RawSql
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe WhereClause
+</span><a href="#local-6989586621679116791"><span class="hs-identifier hs-var">maybeWhereClause</span></a></span><span>
+</span><span id="line-48"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">OrderByClause -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">(OrderByClause -&gt; RawSql) -&gt; Maybe OrderByClause -&gt; Maybe RawSql
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe OrderByClause
+</span><a href="#local-6989586621679116790"><span class="hs-identifier hs-var">maybeOrderByClause</span></a></span><span>
+</span><span id="line-49"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">GroupByClause -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">(GroupByClause -&gt; RawSql) -&gt; Maybe GroupByClause -&gt; Maybe RawSql
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe GroupByClause
+</span><a href="#local-6989586621679116789"><span class="hs-identifier hs-var">maybeGroupByClause</span></a></span><span>
+</span><span id="line-50"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">LimitExpr -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">(LimitExpr -&gt; RawSql) -&gt; Maybe LimitExpr -&gt; Maybe RawSql
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe LimitExpr
+</span><a href="#local-6989586621679116788"><span class="hs-identifier hs-var">maybeLimitExpr</span></a></span><span>
+</span><span id="line-51"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">OffsetExpr -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">(OffsetExpr -&gt; RawSql) -&gt; Maybe OffsetExpr -&gt; Maybe RawSql
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe OffsetExpr
+</span><a href="#local-6989586621679116787"><span class="hs-identifier hs-var">maybeOffsetExpr</span></a></span><span>
+</span><span id="line-52"></span><span>          </span><span class="hs-special">]</span><span>
+</span><span id="line-53"></span></pre></body></html>

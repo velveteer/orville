@@ -1,0 +1,352 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Expr.ColumnDefinition
+Copyright : Flipstone Technology Partners 2016-2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.ColumnDefinition</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefinition"><span class="hs-identifier">ColumnDefinition</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#columnDefinition"><span class="hs-identifier">columnDefinition</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnConstraint"><span class="hs-identifier">ColumnConstraint</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#notNullConstraint"><span class="hs-identifier">notNullConstraint</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#nullConstraint"><span class="hs-identifier">nullConstraint</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefault"><span class="hs-identifier">ColumnDefault</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#columnDefault"><span class="hs-identifier">columnDefault</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier">DataType</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#timestampWithZone"><span class="hs-identifier">timestampWithZone</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#timestampWithoutZone"><span class="hs-identifier">timestampWithoutZone</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#date"><span class="hs-identifier">date</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-20"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#tsvector"><span class="hs-identifier">tsvector</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#varchar"><span class="hs-identifier">varchar</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#char"><span class="hs-identifier">char</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-23"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#text"><span class="hs-identifier">text</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-24"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#uuid"><span class="hs-identifier">uuid</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-25"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#boolean"><span class="hs-identifier">boolean</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-26"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#doublePrecision"><span class="hs-identifier">doublePrecision</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-27"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#bigSerial"><span class="hs-identifier">bigSerial</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-28"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#bigInt"><span class="hs-identifier">bigInt</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-29"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#serial"><span class="hs-identifier">serial</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-30"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#int"><span class="hs-identifier">int</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-31"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#smallint"><span class="hs-identifier">smallint</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-32"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#oid"><span class="hs-identifier">oid</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Int</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Int32</span></span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Maybe</span></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Name</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier">ColumnName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.ValueExpression</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#ValueExpression"><span class="hs-identifier">ValueExpression</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-keyword">newtype</span><span> </span><span id="ColumnDefinition"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefinition"><span class="hs-identifier hs-var">ColumnDefinition</span></a></span></span><span>
+</span><span id="line-44"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="ColumnDefinition"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefinition"><span class="hs-identifier hs-var">ColumnDefinition</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-45"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116386"><span id="local-6989586621679116388"><span class="annot"><span class="annottext">RawSql -&gt; ColumnDefinition
+ColumnDefinition -&gt; RawSql
+(ColumnDefinition -&gt; RawSql)
+-&gt; (RawSql -&gt; ColumnDefinition) -&gt; SqlExpression ColumnDefinition
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; ColumnDefinition
+$cunsafeFromRawSql :: RawSql -&gt; ColumnDefinition
+toRawSql :: ColumnDefinition -&gt; RawSql
+$ctoRawSql :: ColumnDefinition -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#columnDefinition"><span class="hs-identifier hs-type">columnDefinition</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-48"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-49"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-50"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnConstraint"><span class="hs-identifier hs-type">ColumnConstraint</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-51"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefault"><span class="hs-identifier hs-type">ColumnDefault</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-52"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefinition"><span class="hs-identifier hs-type">ColumnDefinition</span></a></span><span>
+</span><span id="line-53"></span><span id="columnDefinition"><span class="annot"><span class="annottext">columnDefinition :: ColumnName
+-&gt; DataType
+-&gt; Maybe ColumnConstraint
+-&gt; Maybe ColumnDefault
+-&gt; ColumnDefinition
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#columnDefinition"><span class="hs-identifier hs-var hs-var">columnDefinition</span></a></span></span><span> </span><span id="local-6989586621679116384"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116384"><span class="hs-identifier hs-var">columnName</span></a></span></span><span> </span><span id="local-6989586621679116383"><span class="annot"><span class="annottext">DataType
+</span><a href="#local-6989586621679116383"><span class="hs-identifier hs-var">dataType</span></a></span></span><span> </span><span id="local-6989586621679116382"><span class="annot"><span class="annottext">Maybe ColumnConstraint
+</span><a href="#local-6989586621679116382"><span class="hs-identifier hs-var">maybeColumnConstraint</span></a></span></span><span> </span><span id="local-6989586621679116381"><span class="annot"><span class="annottext">Maybe ColumnDefault
+</span><a href="#local-6989586621679116381"><span class="hs-identifier hs-var">maybeColumnDefault</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-54"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ColumnDefinition
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefinition"><span class="hs-identifier hs-var">ColumnDefinition</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; ColumnDefinition) -&gt; RawSql -&gt; ColumnDefinition
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-55"></span><span>    </span><span class="annot"><span class="annottext">RawSql -&gt; [RawSql] -&gt; RawSql
+forall sql (f :: * -&gt; *).
+(SqlExpression sql, Foldable f) =&gt;
+RawSql -&gt; f sql -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#intercalate"><span class="hs-identifier hs-var">RawSql.intercalate</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span> </span><span class="annot"><span class="annottext">([RawSql] -&gt; RawSql) -&gt; [RawSql] -&gt; RawSql
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-56"></span><span>      </span><span class="annot"><span class="annottext">[Maybe RawSql] -&gt; [RawSql]
+forall a. [Maybe a] -&gt; [a]
+</span><span class="hs-identifier hs-var">Maybe.catMaybes</span></span><span>
+</span><span id="line-57"></span><span>        </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; Maybe RawSql
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; Maybe RawSql) -&gt; RawSql -&gt; Maybe RawSql
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ColumnName -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116384"><span class="hs-identifier hs-var">columnName</span></a></span><span>
+</span><span id="line-58"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; Maybe RawSql
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; Maybe RawSql) -&gt; RawSql -&gt; Maybe RawSql
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">DataType -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">DataType
+</span><a href="#local-6989586621679116383"><span class="hs-identifier hs-var">dataType</span></a></span><span>
+</span><span id="line-59"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(ColumnConstraint -&gt; RawSql)
+-&gt; Maybe ColumnConstraint -&gt; Maybe RawSql
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">ColumnConstraint -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe ColumnConstraint
+</span><a href="#local-6989586621679116382"><span class="hs-identifier hs-var">maybeColumnConstraint</span></a></span><span>
+</span><span id="line-60"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(ColumnDefault -&gt; RawSql) -&gt; Maybe ColumnDefault -&gt; Maybe RawSql
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">ColumnDefault -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe ColumnDefault
+</span><a href="#local-6989586621679116381"><span class="hs-identifier hs-var">maybeColumnDefault</span></a></span><span>
+</span><span id="line-61"></span><span>        </span><span class="hs-special">]</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-keyword">newtype</span><span> </span><span id="ColumnConstraint"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnConstraint"><span class="hs-identifier hs-var">ColumnConstraint</span></a></span></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="ColumnConstraint"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnConstraint"><span class="hs-identifier hs-var">ColumnConstraint</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116372"><span id="local-6989586621679116374"><span class="annot"><span class="annottext">RawSql -&gt; ColumnConstraint
+ColumnConstraint -&gt; RawSql
+(ColumnConstraint -&gt; RawSql)
+-&gt; (RawSql -&gt; ColumnConstraint) -&gt; SqlExpression ColumnConstraint
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; ColumnConstraint
+$cunsafeFromRawSql :: RawSql -&gt; ColumnConstraint
+toRawSql :: ColumnConstraint -&gt; RawSql
+$ctoRawSql :: ColumnConstraint -&gt; RawSql
+</span><a href="#local-6989586621679116372"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#notNullConstraint"><span class="hs-identifier hs-type">notNullConstraint</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnConstraint"><span class="hs-identifier hs-type">ColumnConstraint</span></a></span><span>
+</span><span id="line-68"></span><span id="notNullConstraint"><span class="annot"><span class="annottext">notNullConstraint :: ColumnConstraint
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#notNullConstraint"><span class="hs-identifier hs-var hs-var">notNullConstraint</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-69"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ColumnConstraint
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnConstraint"><span class="hs-identifier hs-var">ColumnConstraint</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;NOT NULL&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#nullConstraint"><span class="hs-identifier hs-type">nullConstraint</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnConstraint"><span class="hs-identifier hs-type">ColumnConstraint</span></a></span><span>
+</span><span id="line-72"></span><span id="nullConstraint"><span class="annot"><span class="annottext">nullConstraint :: ColumnConstraint
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#nullConstraint"><span class="hs-identifier hs-var hs-var">nullConstraint</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-73"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ColumnConstraint
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnConstraint"><span class="hs-identifier hs-var">ColumnConstraint</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;NULL&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="hs-keyword">newtype</span><span> </span><span id="ColumnDefault"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefault"><span class="hs-identifier hs-var">ColumnDefault</span></a></span></span><span>
+</span><span id="line-76"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="ColumnDefault"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefault"><span class="hs-identifier hs-var">ColumnDefault</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-77"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116366"><span id="local-6989586621679116368"><span class="annot"><span class="annottext">RawSql -&gt; ColumnDefault
+ColumnDefault -&gt; RawSql
+(ColumnDefault -&gt; RawSql)
+-&gt; (RawSql -&gt; ColumnDefault) -&gt; SqlExpression ColumnDefault
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; ColumnDefault
+$cunsafeFromRawSql :: RawSql -&gt; ColumnDefault
+toRawSql :: ColumnDefault -&gt; RawSql
+$ctoRawSql :: ColumnDefault -&gt; RawSql
+</span><a href="#local-6989586621679116366"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#columnDefault"><span class="hs-identifier hs-type">columnDefault</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-80"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ValueExpression.html#ValueExpression"><span class="hs-identifier hs-type">ValueExpression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-81"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefault"><span class="hs-identifier hs-type">ColumnDefault</span></a></span><span>
+</span><span id="line-82"></span><span id="columnDefault"><span class="annot"><span class="annottext">columnDefault :: ValueExpression -&gt; ColumnDefault
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#columnDefault"><span class="hs-identifier hs-var hs-var">columnDefault</span></a></span></span><span> </span><span id="local-6989586621679116365"><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116365"><span class="hs-identifier hs-var">defaultValue</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-83"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ColumnDefault
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#ColumnDefault"><span class="hs-identifier hs-var">ColumnDefault</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;DEFAULT &quot;</span></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ValueExpression -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">ValueExpression
+</span><a href="#local-6989586621679116365"><span class="hs-identifier hs-var">defaultValue</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span class="hs-keyword">newtype</span><span> </span><span id="DataType"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span></span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="DataType"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-87"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116360"><span id="local-6989586621679116362"><span class="annot"><span class="annottext">RawSql -&gt; DataType
+DataType -&gt; RawSql
+(DataType -&gt; RawSql)
+-&gt; (RawSql -&gt; DataType) -&gt; SqlExpression DataType
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; DataType
+$cunsafeFromRawSql :: RawSql -&gt; DataType
+toRawSql :: DataType -&gt; RawSql
+$ctoRawSql :: DataType -&gt; RawSql
+</span><a href="#local-6989586621679116360"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#timestampWithZone"><span class="hs-identifier hs-type">timestampWithZone</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-90"></span><span id="timestampWithZone"><span class="annot"><span class="annottext">timestampWithZone :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#timestampWithZone"><span class="hs-identifier hs-var hs-var">timestampWithZone</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;TIMESTAMP with time zone&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#timestampWithoutZone"><span class="hs-identifier hs-type">timestampWithoutZone</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-94"></span><span id="timestampWithoutZone"><span class="annot"><span class="annottext">timestampWithoutZone :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#timestampWithoutZone"><span class="hs-identifier hs-var hs-var">timestampWithoutZone</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-95"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;TIMESTAMP without time zone&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#date"><span class="hs-identifier hs-type">date</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-98"></span><span id="date"><span class="annot"><span class="annottext">date :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#date"><span class="hs-identifier hs-var hs-var">date</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-99"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;DATE&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#tsvector"><span class="hs-identifier hs-type">tsvector</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-102"></span><span id="tsvector"><span class="annot"><span class="annottext">tsvector :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#tsvector"><span class="hs-identifier hs-var hs-var">tsvector</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-103"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;TSVECTOR&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#varchar"><span class="hs-identifier hs-type">varchar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int32</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-106"></span><span id="varchar"><span class="annot"><span class="annottext">varchar :: Int32 -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#varchar"><span class="hs-identifier hs-var hs-var">varchar</span></a></span></span><span> </span><span id="local-6989586621679116359"><span class="annot"><span class="annottext">Int32
+</span><a href="#local-6989586621679116359"><span class="hs-identifier hs-var">len</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-107"></span><span>  </span><span class="hs-comment">-- postgresql won't let us pass the field length as a parameter.</span><span>
+</span><span id="line-108"></span><span>  </span><span class="hs-comment">-- when we try we get an error like such error:</span><span>
+</span><span id="line-109"></span><span>  </span><span class="hs-comment">--  ERROR:  syntax error at or near &quot;$1&quot; at character 48</span><span>
+</span><span id="line-110"></span><span>  </span><span class="hs-comment">--  STATEMENT:  CREATE TABLE field_definition_test(foo VARCHAR($1))</span><span>
+</span><span id="line-111"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; DataType) -&gt; RawSql -&gt; DataType
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-112"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;VARCHAR(&quot;</span></span><span>
+</span><span id="line-113"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int32 -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#int32DecLiteral"><span class="hs-identifier hs-var">RawSql.int32DecLiteral</span></a></span><span> </span><span class="annot"><span class="annottext">Int32
+</span><a href="#local-6989586621679116359"><span class="hs-identifier hs-var">len</span></a></span><span>
+</span><span id="line-114"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-115"></span><span>
+</span><span id="line-116"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#char"><span class="hs-identifier hs-type">char</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int32</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-117"></span><span id="char"><span class="annot"><span class="annottext">char :: Int32 -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#char"><span class="hs-identifier hs-var hs-var">char</span></a></span></span><span> </span><span id="local-6989586621679116357"><span class="annot"><span class="annottext">Int32
+</span><a href="#local-6989586621679116357"><span class="hs-identifier hs-var">len</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-118"></span><span>  </span><span class="hs-comment">-- postgresql won't let us pass the field length as a parameter.</span><span>
+</span><span id="line-119"></span><span>  </span><span class="hs-comment">-- when we try we get an error like such error:</span><span>
+</span><span id="line-120"></span><span>  </span><span class="hs-comment">--  ERROR:  syntax error at or near &quot;$1&quot; at character 48</span><span>
+</span><span id="line-121"></span><span>  </span><span class="hs-comment">--  STATEMENT:  CREATE TABLE field_definition_test(foo CHAR($1))</span><span>
+</span><span id="line-122"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; DataType) -&gt; RawSql -&gt; DataType
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-123"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;CHAR(&quot;</span></span><span>
+</span><span id="line-124"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int32 -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#int32DecLiteral"><span class="hs-identifier hs-var">RawSql.int32DecLiteral</span></a></span><span> </span><span class="annot"><span class="annottext">Int32
+</span><a href="#local-6989586621679116357"><span class="hs-identifier hs-var">len</span></a></span><span>
+</span><span id="line-125"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#text"><span class="hs-identifier hs-type">text</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-128"></span><span id="text"><span class="annot"><span class="annottext">text :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#text"><span class="hs-identifier hs-var hs-var">text</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-129"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;TEXT&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#uuid"><span class="hs-identifier hs-type">uuid</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-132"></span><span id="uuid"><span class="annot"><span class="annottext">uuid :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#uuid"><span class="hs-identifier hs-var hs-var">uuid</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-133"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;UUID&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#boolean"><span class="hs-identifier hs-type">boolean</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-136"></span><span id="boolean"><span class="annot"><span class="annottext">boolean :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#boolean"><span class="hs-identifier hs-var hs-var">boolean</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-137"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;BOOLEAN&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#doublePrecision"><span class="hs-identifier hs-type">doublePrecision</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-140"></span><span id="doublePrecision"><span class="annot"><span class="annottext">doublePrecision :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#doublePrecision"><span class="hs-identifier hs-var hs-var">doublePrecision</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-141"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;DOUBLE PRECISION&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#bigSerial"><span class="hs-identifier hs-type">bigSerial</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-144"></span><span id="bigSerial"><span class="annot"><span class="annottext">bigSerial :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#bigSerial"><span class="hs-identifier hs-var hs-var">bigSerial</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-145"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;BIGSERIAL&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-146"></span><span>
+</span><span id="line-147"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#bigInt"><span class="hs-identifier hs-type">bigInt</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-148"></span><span id="bigInt"><span class="annot"><span class="annottext">bigInt :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#bigInt"><span class="hs-identifier hs-var hs-var">bigInt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-149"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;BIGINT&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#serial"><span class="hs-identifier hs-type">serial</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-152"></span><span id="serial"><span class="annot"><span class="annottext">serial :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#serial"><span class="hs-identifier hs-var hs-var">serial</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-153"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;SERIAL&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-154"></span><span>
+</span><span id="line-155"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#int"><span class="hs-identifier hs-type">int</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-156"></span><span id="int"><span class="annot"><span class="annottext">int :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#int"><span class="hs-identifier hs-var hs-var">int</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-157"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;INT&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-158"></span><span>
+</span><span id="line-159"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#smallint"><span class="hs-identifier hs-type">smallint</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-160"></span><span id="smallint"><span class="annot"><span class="annottext">smallint :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#smallint"><span class="hs-identifier hs-var hs-var">smallint</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-161"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;SMALLINT&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-162"></span><span>
+</span><span id="line-163"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#oid"><span class="hs-identifier hs-type">oid</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-type">DataType</span></a></span><span>
+</span><span id="line-164"></span><span id="oid"><span class="annot"><span class="annottext">oid :: DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#oid"><span class="hs-identifier hs-var hs-var">oid</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-165"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; DataType
+</span><a href="Orville.PostgreSQL.Internal.Expr.ColumnDefinition.html#DataType"><span class="hs-identifier hs-var">DataType</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;OID&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-166"></span></pre></body></html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr
+Copyright : Flipstone Technology Partners 2016-2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#InsertExpr"><span class="hs-identifier">InsertExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#insertExpr"><span class="hs-identifier">insertExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">catMaybes</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertColumnList.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Insert.InsertColumnList</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertColumnList.html#InsertColumnList"><span class="hs-identifier">InsertColumnList</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertSource.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Insert.InsertSource</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertSource.html#InsertSource"><span class="hs-identifier">InsertSource</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Name</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Qualified.html#Qualified"><span class="hs-identifier">Qualified</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.TableName.html#TableName"><span class="hs-identifier">TableName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.ReturningExpr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#ReturningExpr"><span class="hs-identifier">ReturningExpr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">newtype</span><span> </span><span id="InsertExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#InsertExpr"><span class="hs-identifier hs-var">InsertExpr</span></a></span></span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="InsertExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#InsertExpr"><span class="hs-identifier hs-var">InsertExpr</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679117138"><span id="local-6989586621679117140"><span class="annot"><span class="annottext">RawSql -&gt; InsertExpr
+InsertExpr -&gt; RawSql
+(InsertExpr -&gt; RawSql)
+-&gt; (RawSql -&gt; InsertExpr) -&gt; SqlExpression InsertExpr
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; InsertExpr
+$cunsafeFromRawSql :: RawSql -&gt; InsertExpr
+toRawSql :: InsertExpr -&gt; RawSql
+$ctoRawSql :: InsertExpr -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#insertExpr"><span class="hs-identifier hs-type">insertExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-27"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.Qualified.html#Qualified"><span class="hs-identifier hs-type">Qualified</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.TableName.html#TableName"><span class="hs-identifier hs-type">TableName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-28"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertColumnList.html#InsertColumnList"><span class="hs-identifier hs-type">InsertColumnList</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-29"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertSource.html#InsertSource"><span class="hs-identifier hs-type">InsertSource</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-30"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#ReturningExpr"><span class="hs-identifier hs-type">ReturningExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-31"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#InsertExpr"><span class="hs-identifier hs-type">InsertExpr</span></a></span><span>
+</span><span id="line-32"></span><span id="insertExpr"><span class="annot"><span class="annottext">insertExpr :: Qualified TableName
+-&gt; Maybe InsertColumnList
+-&gt; InsertSource
+-&gt; Maybe ReturningExpr
+-&gt; InsertExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#insertExpr"><span class="hs-identifier hs-var hs-var">insertExpr</span></a></span></span><span> </span><span id="local-6989586621679117136"><span class="annot"><span class="annottext">Qualified TableName
+</span><a href="#local-6989586621679117136"><span class="hs-identifier hs-var">target</span></a></span></span><span> </span><span id="local-6989586621679117135"><span class="annot"><span class="annottext">Maybe InsertColumnList
+</span><a href="#local-6989586621679117135"><span class="hs-identifier hs-var">maybeInsertColumns</span></a></span></span><span> </span><span id="local-6989586621679117134"><span class="annot"><span class="annottext">InsertSource
+</span><a href="#local-6989586621679117134"><span class="hs-identifier hs-var">source</span></a></span></span><span> </span><span id="local-6989586621679117133"><span class="annot"><span class="annottext">Maybe ReturningExpr
+</span><a href="#local-6989586621679117133"><span class="hs-identifier hs-var">maybeReturning</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-33"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; InsertExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.Insert.InsertExpr.html#InsertExpr"><span class="hs-identifier hs-var">InsertExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; InsertExpr) -&gt; RawSql -&gt; InsertExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-34"></span><span>    </span><span class="annot"><span class="annottext">RawSql -&gt; [RawSql] -&gt; RawSql
+forall sql (f :: * -&gt; *).
+(SqlExpression sql, Foldable f) =&gt;
+RawSql -&gt; f sql -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#intercalate"><span class="hs-identifier hs-var">RawSql.intercalate</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span> </span><span class="annot"><span class="annottext">([RawSql] -&gt; RawSql) -&gt; [RawSql] -&gt; RawSql
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-35"></span><span>      </span><span class="annot"><span class="annottext">[Maybe RawSql] -&gt; [RawSql]
+forall a. [Maybe a] -&gt; [a]
+</span><span class="hs-identifier hs-var">catMaybes</span></span><span>
+</span><span id="line-36"></span><span>        </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; Maybe RawSql
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; Maybe RawSql) -&gt; RawSql -&gt; Maybe RawSql
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;INSERT INTO&quot;</span></span><span>
+</span><span id="line-37"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; Maybe RawSql
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; Maybe RawSql) -&gt; RawSql -&gt; Maybe RawSql
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Qualified TableName -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">Qualified TableName
+</span><a href="#local-6989586621679117136"><span class="hs-identifier hs-var">target</span></a></span><span>
+</span><span id="line-38"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(InsertColumnList -&gt; RawSql)
+-&gt; Maybe InsertColumnList -&gt; Maybe RawSql
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">InsertColumnList -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe InsertColumnList
+</span><a href="#local-6989586621679117135"><span class="hs-identifier hs-var">maybeInsertColumns</span></a></span><span>
+</span><span id="line-39"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; Maybe RawSql
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; Maybe RawSql) -&gt; RawSql -&gt; Maybe RawSql
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">InsertSource -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">InsertSource
+</span><a href="#local-6989586621679117134"><span class="hs-identifier hs-var">source</span></a></span><span>
+</span><span id="line-40"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(ReturningExpr -&gt; RawSql) -&gt; Maybe ReturningExpr -&gt; Maybe RawSql
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">ReturningExpr -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe ReturningExpr
+</span><a href="#local-6989586621679117133"><span class="hs-identifier hs-var">maybeReturning</span></a></span><span>
+</span><span id="line-41"></span><span>        </span><span class="hs-special">]</span><span>
+</span><span id="line-42"></span></pre></body></html>

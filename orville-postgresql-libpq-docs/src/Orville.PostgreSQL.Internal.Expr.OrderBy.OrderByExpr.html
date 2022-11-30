@@ -1,0 +1,116 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Expr.OrderBy.OrderByExpr
+Copyright : Flipstone Technology Partners 2016-2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier">OrderByExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#appendOrderByExpr"><span class="hs-identifier">appendOrderByExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#orderByExpr"><span class="hs-identifier">orderByExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#orderByColumnsExpr"><span class="hs-identifier">orderByColumnsExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NonEmpty</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">NE</span></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Name</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier">ColumnName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier">OrderByDirection</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">newtype</span><span> </span><span id="OrderByExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-var">OrderByExpr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="OrderByExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-var">OrderByExpr</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679115833"><span id="local-6989586621679115835"><span class="annot"><span class="annottext">RawSql -&gt; OrderByExpr
+OrderByExpr -&gt; RawSql
+(OrderByExpr -&gt; RawSql)
+-&gt; (RawSql -&gt; OrderByExpr) -&gt; SqlExpression OrderByExpr
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; OrderByExpr
+$cunsafeFromRawSql :: RawSql -&gt; OrderByExpr
+toRawSql :: OrderByExpr -&gt; RawSql
+$ctoRawSql :: OrderByExpr -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#appendOrderByExpr"><span class="hs-identifier hs-type">appendOrderByExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-type">OrderByExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-type">OrderByExpr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-type">OrderByExpr</span></a></span><span>
+</span><span id="line-27"></span><span id="appendOrderByExpr"><span class="annot"><span class="annottext">appendOrderByExpr :: OrderByExpr -&gt; OrderByExpr -&gt; OrderByExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#appendOrderByExpr"><span class="hs-identifier hs-var hs-var">appendOrderByExpr</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-type">OrderByExpr</span></a></span><span> </span><span id="local-6989586621679115831"><span class="annot"><span class="annottext">RawSql
+</span><a href="#local-6989586621679115831"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-type">OrderByExpr</span></a></span><span> </span><span id="local-6989586621679115830"><span class="annot"><span class="annottext">RawSql
+</span><a href="#local-6989586621679115830"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-28"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; OrderByExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-var">OrderByExpr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RawSql
+</span><a href="#local-6989586621679115831"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#commaSpace"><span class="hs-identifier hs-var">RawSql.commaSpace</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="#local-6989586621679115830"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#orderByExpr"><span class="hs-identifier hs-type">orderByExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-type">OrderByDirection</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-type">OrderByExpr</span></a></span><span>
+</span><span id="line-31"></span><span id="orderByExpr"><span class="annot"><span class="annottext">orderByExpr :: RawSql -&gt; OrderByDirection -&gt; OrderByExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#orderByExpr"><span class="hs-identifier hs-var hs-var">orderByExpr</span></a></span></span><span> </span><span id="local-6989586621679115828"><span class="annot"><span class="annottext">RawSql
+</span><a href="#local-6989586621679115828"><span class="hs-identifier hs-var">sql</span></a></span></span><span> </span><span id="local-6989586621679115827"><span class="annot"><span class="annottext">OrderByDirection
+</span><a href="#local-6989586621679115827"><span class="hs-identifier hs-var">orderSql</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-32"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; OrderByExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-var">OrderByExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; OrderByExpr) -&gt; RawSql -&gt; OrderByExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="#local-6989586621679115828"><span class="hs-identifier hs-var">sql</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">OrderByDirection -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">OrderByDirection
+</span><a href="#local-6989586621679115827"><span class="hs-identifier hs-var">orderSql</span></a></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#orderByColumnsExpr"><span class="hs-identifier hs-type">orderByColumnsExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-type">OrderByDirection</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-type">OrderByExpr</span></a></span><span>
+</span><span id="line-35"></span><span id="orderByColumnsExpr"><span class="annot"><span class="annottext">orderByColumnsExpr :: NonEmpty (ColumnName, OrderByDirection) -&gt; OrderByExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#orderByColumnsExpr"><span class="hs-identifier hs-var hs-var">orderByColumnsExpr</span></a></span></span><span> </span><span id="local-6989586621679115824"><span class="annot"><span class="annottext">NonEmpty (ColumnName, OrderByDirection)
+</span><a href="#local-6989586621679115824"><span class="hs-identifier hs-var">columns</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-36"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; OrderByExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByExpr.html#OrderByExpr"><span class="hs-identifier hs-var">OrderByExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; OrderByExpr)
+-&gt; (NonEmpty (ColumnName, OrderByDirection) -&gt; RawSql)
+-&gt; NonEmpty (ColumnName, OrderByDirection)
+-&gt; OrderByExpr
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; NonEmpty RawSql -&gt; RawSql
+forall sql (f :: * -&gt; *).
+(SqlExpression sql, Foldable f) =&gt;
+RawSql -&gt; f sql -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#intercalate"><span class="hs-identifier hs-var">RawSql.intercalate</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#commaSpace"><span class="hs-identifier hs-var">RawSql.commaSpace</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty RawSql -&gt; RawSql)
+-&gt; (NonEmpty (ColumnName, OrderByDirection) -&gt; NonEmpty RawSql)
+-&gt; NonEmpty (ColumnName, OrderByDirection)
+-&gt; RawSql
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">((ColumnName, OrderByDirection) -&gt; RawSql)
+-&gt; NonEmpty (ColumnName, OrderByDirection) -&gt; NonEmpty RawSql
+forall a b. (a -&gt; b) -&gt; NonEmpty a -&gt; NonEmpty b
+</span><span class="hs-identifier hs-var">NE.map</span></span><span> </span><span class="annot"><span class="annottext">(ColumnName, OrderByDirection) -&gt; RawSql
+</span><a href="#local-6989586621679115820"><span class="hs-identifier hs-var">columnOrdering</span></a></span><span> </span><span class="annot"><span class="annottext">(NonEmpty (ColumnName, OrderByDirection) -&gt; OrderByExpr)
+-&gt; NonEmpty (ColumnName, OrderByDirection) -&gt; OrderByExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NonEmpty (ColumnName, OrderByDirection)
+</span><a href="#local-6989586621679115824"><span class="hs-identifier hs-var">columns</span></a></span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-38"></span><span>    </span><span class="annot"><a href="#local-6989586621679115820"><span class="hs-identifier hs-type">columnOrdering</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.OrderBy.OrderByDirection.html#OrderByDirection"><span class="hs-identifier hs-type">OrderByDirection</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-39"></span><span>    </span><span id="local-6989586621679115820"><span class="annot"><span class="annottext">columnOrdering :: (ColumnName, OrderByDirection) -&gt; RawSql
+</span><a href="#local-6989586621679115820"><span class="hs-identifier hs-var hs-var">columnOrdering</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679115819"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679115819"><span class="hs-identifier hs-var">columnName</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679115818"><span class="annot"><span class="annottext">OrderByDirection
+</span><a href="#local-6989586621679115818"><span class="hs-identifier hs-var">orderByDirection</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-40"></span><span>      </span><span class="annot"><span class="annottext">ColumnName -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679115819"><span class="hs-identifier hs-var">columnName</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#space"><span class="hs-identifier hs-var">RawSql.space</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">OrderByDirection -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">OrderByDirection
+</span><a href="#local-6989586621679115818"><span class="hs-identifier hs-var">orderByDirection</span></a></span><span>
+</span><span id="line-41"></span></pre></body></html>

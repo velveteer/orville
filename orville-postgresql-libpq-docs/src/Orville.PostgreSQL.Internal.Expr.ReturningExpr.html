@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.ReturningExpr</span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#ReturningExpr"><span class="hs-identifier">ReturningExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-5"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#returningExpr"><span class="hs-identifier">returningExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Query.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Query</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Query.SelectList.html#SelectList"><span class="hs-identifier">SelectList</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">newtype</span><span> </span><span id="ReturningExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#ReturningExpr"><span class="hs-identifier hs-var">ReturningExpr</span></a></span></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="ReturningExpr"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#ReturningExpr"><span class="hs-identifier hs-var">ReturningExpr</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116862"><span id="local-6989586621679116864"><span class="annot"><span class="annottext">RawSql -&gt; ReturningExpr
+ReturningExpr -&gt; RawSql
+(ReturningExpr -&gt; RawSql)
+-&gt; (RawSql -&gt; ReturningExpr) -&gt; SqlExpression ReturningExpr
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; ReturningExpr
+$cunsafeFromRawSql :: RawSql -&gt; ReturningExpr
+toRawSql :: ReturningExpr -&gt; RawSql
+$ctoRawSql :: ReturningExpr -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#returningExpr"><span class="hs-identifier hs-type">returningExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Query.SelectList.html#SelectList"><span class="hs-identifier hs-type">SelectList</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#ReturningExpr"><span class="hs-identifier hs-type">ReturningExpr</span></a></span><span>
+</span><span id="line-17"></span><span id="returningExpr"><span class="annot"><span class="annottext">returningExpr :: SelectList -&gt; ReturningExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#returningExpr"><span class="hs-identifier hs-var hs-var">returningExpr</span></a></span></span><span> </span><span id="local-6989586621679116860"><span class="annot"><span class="annottext">SelectList
+</span><a href="#local-6989586621679116860"><span class="hs-identifier hs-var">selectList</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-18"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; ReturningExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.ReturningExpr.html#ReturningExpr"><span class="hs-identifier hs-var">ReturningExpr</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; ReturningExpr) -&gt; RawSql -&gt; ReturningExpr
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;RETURNING &quot;</span></span><span>
+</span><span id="line-20"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">SelectList -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">SelectList
+</span><a href="#local-6989586621679116860"><span class="hs-identifier hs-var">selectList</span></a></span><span>
+</span><span id="line-21"></span></pre></body></html>

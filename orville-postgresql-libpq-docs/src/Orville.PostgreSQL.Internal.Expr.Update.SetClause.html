@@ -1,0 +1,54 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Expr.Internal.Update.SetClause
+Copyright : Flipstone Technology Partners 2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Update.SetClause</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier">SetClause</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#setColumn"><span class="hs-identifier">setColumn</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Name</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier">ColumnName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.SqlValue</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">SqlValue</span></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">newtype</span><span> </span><span id="SetClause"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-var">SetClause</span></a></span></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="SetClause"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-var">SetClause</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116564"><span id="local-6989586621679116566"><span class="annot"><span class="annottext">RawSql -&gt; SetClause
+SetClause -&gt; RawSql
+(SetClause -&gt; RawSql)
+-&gt; (RawSql -&gt; SetClause) -&gt; SqlExpression SetClause
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; SetClause
+$cunsafeFromRawSql :: RawSql -&gt; SetClause
+toRawSql :: SetClause -&gt; RawSql
+$ctoRawSql :: SetClause -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#setColumn"><span class="hs-identifier hs-type">setColumn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Name.ColumnName.html#ColumnName"><span class="hs-identifier hs-type">ColumnName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue.SqlValue</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-type">SetClause</span></a></span><span>
+</span><span id="line-23"></span><span id="setColumn"><span class="annot"><span class="annottext">setColumn :: ColumnName -&gt; SqlValue -&gt; SetClause
+</span><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#setColumn"><span class="hs-identifier hs-var hs-var">setColumn</span></a></span></span><span> </span><span id="local-6989586621679116562"><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116562"><span class="hs-identifier hs-var">columnName</span></a></span></span><span> </span><span id="local-6989586621679116561"><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116561"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-24"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; SetClause
+</span><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-var">SetClause</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; SetClause) -&gt; RawSql -&gt; SetClause
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-25"></span><span>    </span><span class="annot"><span class="annottext">ColumnName -&gt; RawSql
+forall a. SqlExpression a =&gt; a -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#toRawSql"><span class="hs-identifier hs-var">RawSql.toRawSql</span></a></span><span> </span><span class="annot"><span class="annottext">ColumnName
+</span><a href="#local-6989586621679116562"><span class="hs-identifier hs-var">columnName</span></a></span><span>
+</span><span id="line-26"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#fromString"><span class="hs-identifier hs-var">RawSql.fromString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;=&quot;</span></span><span>
+</span><span id="line-27"></span><span>      </span><span class="annot"><span class="annottext">RawSql -&gt; RawSql -&gt; RawSql
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">SqlValue -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#parameter"><span class="hs-identifier hs-var">RawSql.parameter</span></a></span><span> </span><span class="annot"><span class="annottext">SqlValue
+</span><a href="#local-6989586621679116561"><span class="hs-identifier hs-var">value</span></a></span><span>
+</span><span id="line-28"></span></pre></body></html>

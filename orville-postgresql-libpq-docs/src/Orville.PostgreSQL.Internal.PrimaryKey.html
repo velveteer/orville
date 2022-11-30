@@ -1,0 +1,339 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE RankNTypes #-}</span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.PrimaryKey</span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier">PrimaryKey</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-6"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyDescription"><span class="hs-identifier">primaryKeyDescription</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-7"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyFieldNames"><span class="hs-identifier">primaryKeyFieldNames</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-8"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyToSql"><span class="hs-identifier">primaryKeyToSql</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-9"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKey"><span class="hs-identifier">primaryKey</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier">PrimaryKeyPart</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#compositePrimaryKey"><span class="hs-identifier">compositePrimaryKey</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyPart"><span class="hs-identifier">primaryKeyPart</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mapPrimaryKeyParts"><span class="hs-identifier">mapPrimaryKeyParts</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mkPrimaryKeyExpr"><span class="hs-identifier">mkPrimaryKeyExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEquals"><span class="hs-identifier">primaryKeyEquals</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEqualsExpr"><span class="hs-identifier">primaryKeyEqualsExpr</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">List</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(:|)</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">toList</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Expr</span></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Extra.NonEmpty.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Extra.NonEmpty</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">ExtraNonEmpty</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.FieldDefinition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier">FieldDefinition</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldName"><span class="hs-identifier">FieldName</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#NotNull"><span class="hs-identifier">NotNull</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier">fieldColumnName</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldName"><span class="hs-identifier">fieldName</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldNameToString"><span class="hs-identifier">fieldNameToString</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldValueToSqlValue"><span class="hs-identifier">fieldValueToSqlValue</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.SelectOptions</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier">WhereCondition</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldEquals"><span class="hs-identifier">fieldEquals</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereAnd"><span class="hs-identifier">whereAnd</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier">whereConditionToBooleanExpr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.SqlValue</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">SqlValue</span></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-comment">{- |
+  A Haskell description of the 'FieldDefinition's that make up the primary
+  key of a SQL table. This type supports composite primary keys as well
+  as singular ones.
+-}</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">data</span><span> </span><span id="PrimaryKey"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-var">PrimaryKey</span></a></span></span><span> </span><span id="local-6989586621679118798"><span class="annot"><a href="#local-6989586621679118798"><span class="hs-identifier hs-type">key</span></a></span></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="PrimaryKey"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-var">PrimaryKey</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-type">PrimaryKeyPart</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118798"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-type">PrimaryKeyPart</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118798"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">{- |
+  A 'PrimaryKeyPart' describes one field of a composite primary key. Values
+  are built using 'primaryKeyPart' and then used with 'compositePrimaryKey'
+  to build a 'PrimaryKey'
+-}</span><span>
+</span><span id="line-42"></span><span class="hs-keyword">data</span><span> </span><span id="PrimaryKeyPart"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-var">PrimaryKeyPart</span></a></span></span><span> </span><span id="local-6989586621679118797"><span class="annot"><a href="#local-6989586621679118797"><span class="hs-identifier hs-type">key</span></a></span></span><span>
+</span><span id="line-43"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679118796"><span class="annot"><a href="#local-6989586621679118796"><span class="hs-identifier hs-type">part</span></a></span></span><span class="hs-operator">.</span><span> </span><span id="PrimaryKeyPart"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-var">PrimaryKeyPart</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679118797"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118796"><span class="hs-identifier hs-type">part</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDefinition</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#NotNull"><span class="hs-identifier hs-type">NotNull</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118796"><span class="hs-identifier hs-type">part</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">{- |
+  'primaryKeyDescription' builds a user-readable representation of the
+  primary key for use in error messages and such. It is a comma-delimited
+  list of the names of the fields that make up the primary key.
+-}</span><span>
+</span><span id="line-50"></span><span id="local-6989586621679118741"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyDescription"><span class="hs-identifier hs-type">primaryKeyDescription</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118741"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-51"></span><span id="primaryKeyDescription"><span class="annot"><span class="annottext">primaryKeyDescription :: PrimaryKey key -&gt; String
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyDescription"><span class="hs-identifier hs-var hs-var">primaryKeyDescription</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-52"></span><span>  </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; String
+forall a. [a] -&gt; [[a]] -&gt; [a]
+</span><span class="hs-identifier hs-var">List.intercalate</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;, &quot;</span></span><span>
+</span><span id="line-53"></span><span>    </span><span class="annot"><span class="annottext">([String] -&gt; String)
+-&gt; (PrimaryKey key -&gt; [String]) -&gt; PrimaryKey key -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(FieldName -&gt; String) -&gt; [FieldName] -&gt; [String]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">FieldName -&gt; String
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldNameToString"><span class="hs-identifier hs-var">fieldNameToString</span></a></span><span>
+</span><span id="line-54"></span><span>    </span><span class="annot"><span class="annottext">([FieldName] -&gt; [String])
+-&gt; (PrimaryKey key -&gt; [FieldName]) -&gt; PrimaryKey key -&gt; [String]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">NonEmpty FieldName -&gt; [FieldName]
+forall a. NonEmpty a -&gt; [a]
+</span><span class="hs-identifier hs-var">toList</span></span><span>
+</span><span id="line-55"></span><span>    </span><span class="annot"><span class="annottext">(NonEmpty FieldName -&gt; [FieldName])
+-&gt; (PrimaryKey key -&gt; NonEmpty FieldName)
+-&gt; PrimaryKey key
+-&gt; [FieldName]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">PrimaryKey key -&gt; NonEmpty FieldName
+forall key. PrimaryKey key -&gt; NonEmpty FieldName
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyFieldNames"><span class="hs-identifier hs-var">primaryKeyFieldNames</span></a></span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="hs-comment">{- |
+  Retrieves the names of the fields that are part of the primary key.
+-}</span><span>
+</span><span id="line-60"></span><span id="local-6989586621679118824"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyFieldNames"><span class="hs-identifier hs-type">primaryKeyFieldNames</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118824"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldName"><span class="hs-identifier hs-type">FieldName</span></a></span></span><span>
+</span><span id="line-61"></span><span id="primaryKeyFieldNames"><span class="annot"><span class="annottext">primaryKeyFieldNames :: PrimaryKey key -&gt; NonEmpty FieldName
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyFieldNames"><span class="hs-identifier hs-var hs-var">primaryKeyFieldNames</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679118810"><span id="local-6989586621679118811"><span id="local-6989586621679118812"><span class="annot"><a href="#local-6989586621679118738"><span class="hs-identifier hs-type">partName</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679118812"><span class="hs-identifier hs-type">part</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118811"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDefinition</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#NotNull"><span class="hs-identifier hs-type">NotNull</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118810"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldName"><span class="hs-identifier hs-type">FieldName</span></a></span></span></span></span><span>
+</span><span id="line-63"></span><span>      </span><span id="local-6989586621679118738"><span class="annot"><span class="annottext">partName :: (part -&gt; key) -&gt; FieldDefinition NotNull a -&gt; FieldName
+</span><a href="#local-6989586621679118738"><span class="hs-identifier hs-var hs-var">partName</span></a></span></span><span> </span><span class="annot"><span class="annottext">part -&gt; key
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679118737"><span class="annot"><span class="annottext">FieldDefinition NotNull a
+</span><a href="#local-6989586621679118737"><span class="hs-identifier hs-var">field</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-64"></span><span>        </span><span class="annot"><span class="annottext">FieldDefinition NotNull a -&gt; FieldName
+forall nullability a. FieldDefinition nullability a -&gt; FieldName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldName"><span class="hs-identifier hs-var">fieldName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition NotNull a
+</span><a href="#local-6989586621679118737"><span class="hs-identifier hs-var">field</span></a></span><span>
+</span><span id="line-65"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(forall part.
+ (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; FieldName)
+-&gt; PrimaryKey key -&gt; NonEmpty FieldName
+forall key a.
+(forall part. (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; a)
+-&gt; PrimaryKey key -&gt; NonEmpty a
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mapPrimaryKeyParts"><span class="hs-identifier hs-var">mapPrimaryKeyParts</span></a></span><span> </span><span class="annot"><span class="annottext">forall part.
+(key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; FieldName
+forall part key a.
+(part -&gt; key) -&gt; FieldDefinition NotNull a -&gt; FieldName
+</span><a href="#local-6989586621679118738"><span class="hs-identifier hs-var">partName</span></a></span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="hs-comment">{- |
+  'primaryKeyToSql' converts a Haskell value for a primary key into the
+  (possibly multiple) sql values that represent the primary key in the
+  database.
+-}</span><span>
+</span><span id="line-72"></span><span id="local-6989586621679118736"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyToSql"><span class="hs-identifier hs-type">primaryKeyToSql</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118736"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118736"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue.SqlValue</span></a></span></span><span>
+</span><span id="line-73"></span><span id="primaryKeyToSql"><span class="annot"><span class="annottext">primaryKeyToSql :: PrimaryKey key -&gt; key -&gt; NonEmpty SqlValue
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyToSql"><span class="hs-identifier hs-var hs-var">primaryKeyToSql</span></a></span></span><span> </span><span id="local-6989586621679118735"><span class="annot"><span class="annottext">PrimaryKey key
+</span><a href="#local-6989586621679118735"><span class="hs-identifier hs-var">keyDef</span></a></span></span><span> </span><span id="local-6989586621679118734"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118734"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-74"></span><span>  </span><span class="annot"><span class="annottext">(forall part.
+ (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; SqlValue)
+-&gt; PrimaryKey key -&gt; NonEmpty SqlValue
+forall key a.
+(forall part. (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; a)
+-&gt; PrimaryKey key -&gt; NonEmpty a
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mapPrimaryKeyParts"><span class="hs-identifier hs-var">mapPrimaryKeyParts</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">key -&gt; (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; SqlValue
+forall key part.
+key -&gt; (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#partSqlValue"><span class="hs-identifier hs-var">partSqlValue</span></a></span><span> </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118734"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">PrimaryKey key
+</span><a href="#local-6989586621679118735"><span class="hs-identifier hs-var">keyDef</span></a></span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="hs-comment">{- |
+  'partSqlValue' is an internal helper function that builds the 'SqlValue'
+  for one part of a (possible composite) primary key.
+-}</span><span>
+</span><span id="line-80"></span><span id="local-6989586621679118805"><span id="local-6989586621679118806"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#partSqlValue"><span class="hs-identifier hs-type">partSqlValue</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679118806"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679118806"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118805"><span class="hs-identifier hs-type">part</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDefinition</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#NotNull"><span class="hs-identifier hs-type">NotNull</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118805"><span class="hs-identifier hs-type">part</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SqlValue.html#SqlValue"><span class="hs-identifier hs-type">SqlValue.SqlValue</span></a></span></span></span><span>
+</span><span id="line-81"></span><span id="partSqlValue"><span class="annot"><span class="annottext">partSqlValue :: key -&gt; (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#partSqlValue"><span class="hs-identifier hs-var hs-var">partSqlValue</span></a></span></span><span> </span><span id="local-6989586621679118732"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118732"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679118731"><span class="annot"><span class="annottext">key -&gt; part
+</span><a href="#local-6989586621679118731"><span class="hs-identifier hs-var">getPart</span></a></span></span><span> </span><span id="local-6989586621679118730"><span class="annot"><span class="annottext">FieldDefinition NotNull part
+</span><a href="#local-6989586621679118730"><span class="hs-identifier hs-var">partField</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-82"></span><span>  </span><span class="annot"><span class="annottext">FieldDefinition NotNull part -&gt; part -&gt; SqlValue
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; SqlValue
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldValueToSqlValue"><span class="hs-identifier hs-var">fieldValueToSqlValue</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition NotNull part
+</span><a href="#local-6989586621679118730"><span class="hs-identifier hs-var">partField</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">key -&gt; part
+</span><a href="#local-6989586621679118731"><span class="hs-identifier hs-var">getPart</span></a></span><span> </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118732"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="hs-comment">{- |
+  'primaryKey' constructs a single-field primary key from the 'FieldDefinition'
+  that corresponds to the primary key's column. This is generally used while
+  building a 'TableDefinition'.
+-}</span><span>
+</span><span id="line-89"></span><span id="local-6989586621679118729"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKey"><span class="hs-identifier hs-type">primaryKey</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDefinition</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#NotNull"><span class="hs-identifier hs-type">NotNull</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118729"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118729"><span class="hs-identifier hs-type">key</span></a></span></span><span>
+</span><span id="line-90"></span><span id="primaryKey"><span class="annot"><span class="annottext">primaryKey :: FieldDefinition NotNull key -&gt; PrimaryKey key
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKey"><span class="hs-identifier hs-var hs-var">primaryKey</span></a></span></span><span> </span><span id="local-6989586621679118728"><span class="annot"><span class="annottext">FieldDefinition NotNull key
+</span><a href="#local-6989586621679118728"><span class="hs-identifier hs-var">fieldDef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="annottext">PrimaryKeyPart key -&gt; [PrimaryKeyPart key] -&gt; PrimaryKey key
+forall key.
+PrimaryKeyPart key -&gt; [PrimaryKeyPart key] -&gt; PrimaryKey key
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-var">PrimaryKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(key -&gt; key) -&gt; FieldDefinition NotNull key -&gt; PrimaryKeyPart key
+forall key part.
+(key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; PrimaryKeyPart key
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-var">PrimaryKeyPart</span></a></span><span> </span><span class="annot"><span class="annottext">key -&gt; key
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">FieldDefinition NotNull key
+</span><a href="#local-6989586621679118728"><span class="hs-identifier hs-var">fieldDef</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">{- |
+  'compositePrimaryKey' constructs a multi-field primary key from the given
+  parts, each of which corresponds to one field in the primary key.  You should
+  use this while building a 'TableDefinition' for a table that you want to have
+  a multi-column primary key. See 'primaryKeyPart' for how to build the parts
+  to be passed as parameters. Note: there is no special significance to the
+  first argument other than requiring that there is at least one field in the
+  primary key.
+-}</span><span>
+</span><span id="line-102"></span><span id="local-6989586621679118726"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#compositePrimaryKey"><span class="hs-identifier hs-type">compositePrimaryKey</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-103"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-type">PrimaryKeyPart</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118726"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-104"></span><span>  </span><span class="hs-special">[</span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-type">PrimaryKeyPart</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118726"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-105"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118726"><span class="hs-identifier hs-type">key</span></a></span></span><span>
+</span><span id="line-106"></span><span id="compositePrimaryKey"><span class="annot"><span class="annottext">compositePrimaryKey :: PrimaryKeyPart key -&gt; [PrimaryKeyPart key] -&gt; PrimaryKey key
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#compositePrimaryKey"><span class="hs-identifier hs-var hs-var">compositePrimaryKey</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-107"></span><span>  </span><span class="annot"><span class="annottext">PrimaryKeyPart key -&gt; [PrimaryKeyPart key] -&gt; PrimaryKey key
+forall key.
+PrimaryKeyPart key -&gt; [PrimaryKeyPart key] -&gt; PrimaryKey key
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-var">PrimaryKey</span></a></span><span>
+</span><span id="line-108"></span><span>
+</span><span id="line-109"></span><span class="hs-comment">{- |
+  'primaryKeyPart' constructs a building block for a composite primary key
+  based a 'FieldDefinition' and an accessor function to extract the value for
+  that field from the Haskell 'key' type that represents the overall composite
+  key.  'PrimaryKeyPart' values built using this function are usually then
+  passed in a list to 'compositePrimaryKey' to build a 'PrimaryKey'.
+-}</span><span>
+</span><span id="line-116"></span><span id="local-6989586621679118724"><span id="local-6989586621679118725"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyPart"><span class="hs-identifier hs-type">primaryKeyPart</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-117"></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679118725"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118724"><span class="hs-identifier hs-type">part</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-118"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDefinition</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#NotNull"><span class="hs-identifier hs-type">NotNull</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118724"><span class="hs-identifier hs-type">part</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-119"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-type">PrimaryKeyPart</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118725"><span class="hs-identifier hs-type">key</span></a></span></span></span><span>
+</span><span id="line-120"></span><span id="primaryKeyPart"><span class="annot"><span class="annottext">primaryKeyPart :: (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; PrimaryKeyPart key
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyPart"><span class="hs-identifier hs-var hs-var">primaryKeyPart</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-121"></span><span>  </span><span class="annot"><span class="annottext">(key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; PrimaryKeyPart key
+forall key part.
+(key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; PrimaryKeyPart key
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-var">PrimaryKeyPart</span></a></span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span class="hs-comment">{- |
+  'mapPrimaryKeyParts' provides a way to access the innards of a 'PrimaryKey'
+  definition to extract information. The given function will be called on
+  each part of the primary key in order and the list of results is returned.
+  Note that single-field and multi-field primary keys are treated the same by
+  this function, with the single-field case simply behaving as composite key
+  with just one part.
+-}</span><span>
+</span><span id="line-131"></span><span id="local-6989586621679118813"><span id="local-6989586621679118814"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mapPrimaryKeyParts"><span class="hs-identifier hs-type">mapPrimaryKeyParts</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-132"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679118815"><span class="annot"><a href="#local-6989586621679118815"><span class="hs-identifier hs-type">part</span></a></span></span><span class="hs-operator">.</span><span>
+</span><span id="line-133"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679118814"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118815"><span class="hs-identifier hs-type">part</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-134"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDefinition</span></a></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#NotNull"><span class="hs-identifier hs-type">NotNull</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118815"><span class="hs-identifier hs-type">part</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-135"></span><span>    </span><span class="annot"><a href="#local-6989586621679118813"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-136"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-137"></span><span>  </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118814"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-138"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="#local-6989586621679118813"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-139"></span><span id="mapPrimaryKeyParts"><span class="annot"><span class="annottext">mapPrimaryKeyParts :: (forall part. (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; a)
+-&gt; PrimaryKey key -&gt; NonEmpty a
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mapPrimaryKeyParts"><span class="hs-identifier hs-var hs-var">mapPrimaryKeyParts</span></a></span></span><span> </span><span id="local-6989586621679118723"><span class="annot"><span class="annottext">forall part. (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; a
+</span><a href="#local-6989586621679118723"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span id="local-6989586621679118722"><span class="annot"><span class="annottext">PrimaryKeyPart key
+</span><a href="#local-6989586621679118722"><span class="hs-identifier hs-var">first</span></a></span></span><span> </span><span id="local-6989586621679118721"><span class="annot"><span class="annottext">[PrimaryKeyPart key]
+</span><a href="#local-6989586621679118721"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-140"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679118720"><span class="annot"><span class="annottext">doPart :: PrimaryKeyPart key -&gt; a
+</span><a href="#local-6989586621679118720"><span class="hs-identifier hs-var hs-var">doPart</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKeyPart"><span class="hs-identifier hs-type">PrimaryKeyPart</span></a></span><span> </span><span id="local-6989586621679118719"><span class="annot"><span class="annottext">key -&gt; part
+</span><a href="#local-6989586621679118719"><span class="hs-identifier hs-var">getPart</span></a></span></span><span> </span><span id="local-6989586621679118718"><span class="annot"><span class="annottext">FieldDefinition NotNull part
+</span><a href="#local-6989586621679118718"><span class="hs-identifier hs-var">field</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-141"></span><span>        </span><span class="annot"><span class="annottext">(key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; a
+forall part. (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; a
+</span><a href="#local-6989586621679118723"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">key -&gt; part
+</span><a href="#local-6989586621679118719"><span class="hs-identifier hs-var">getPart</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition NotNull part
+</span><a href="#local-6989586621679118718"><span class="hs-identifier hs-var">field</span></a></span><span>
+</span><span id="line-142"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(PrimaryKeyPart key -&gt; a)
+-&gt; NonEmpty (PrimaryKeyPart key) -&gt; NonEmpty a
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">PrimaryKeyPart key -&gt; a
+</span><a href="#local-6989586621679118720"><span class="hs-identifier hs-var">doPart</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PrimaryKeyPart key
+</span><a href="#local-6989586621679118722"><span class="hs-identifier hs-var">first</span></a></span><span> </span><span class="annot"><span class="annottext">PrimaryKeyPart key
+-&gt; [PrimaryKeyPart key] -&gt; NonEmpty (PrimaryKeyPart key)
+forall a. a -&gt; [a] -&gt; NonEmpty a
+</span><span class="hs-operator hs-var">:|</span></span><span> </span><span class="annot"><span class="annottext">[PrimaryKeyPart key]
+</span><a href="#local-6989586621679118721"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-143"></span><span>
+</span><span id="line-144"></span><span class="hs-comment">{- |
+  Builds a 'Expr.PrimaryKeyExpr' that is suitable to be used when creating
+  a table to define the primary key on the table.
+-}</span><span>
+</span><span id="line-148"></span><span id="local-6989586621679118717"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mkPrimaryKeyExpr"><span class="hs-identifier hs-type">mkPrimaryKeyExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118717"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.TableDefinition.html#PrimaryKeyExpr"><span class="hs-identifier hs-type">Expr.PrimaryKeyExpr</span></a></span></span><span>
+</span><span id="line-149"></span><span id="mkPrimaryKeyExpr"><span class="annot"><span class="annottext">mkPrimaryKeyExpr :: PrimaryKey key -&gt; PrimaryKeyExpr
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mkPrimaryKeyExpr"><span class="hs-identifier hs-var hs-var">mkPrimaryKeyExpr</span></a></span></span><span> </span><span id="local-6989586621679118716"><span class="annot"><span class="annottext">PrimaryKey key
+</span><a href="#local-6989586621679118716"><span class="hs-identifier hs-var">keyDef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-150"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679118715"><span class="annot"><span class="annottext">names :: NonEmpty ColumnName
+</span><a href="#local-6989586621679118715"><span class="hs-identifier hs-var hs-var">names</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-151"></span><span>        </span><span class="annot"><span class="annottext">(forall part.
+ (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; ColumnName)
+-&gt; PrimaryKey key -&gt; NonEmpty ColumnName
+forall key a.
+(forall part. (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; a)
+-&gt; PrimaryKey key -&gt; NonEmpty a
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mapPrimaryKeyParts"><span class="hs-identifier hs-var">mapPrimaryKeyParts</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">key -&gt; part
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679118714"><span class="annot"><span class="annottext">FieldDefinition NotNull part
+</span><a href="#local-6989586621679118714"><span class="hs-identifier hs-var">field</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FieldDefinition NotNull part -&gt; ColumnName
+forall nullability a. FieldDefinition nullability a -&gt; ColumnName
+</span><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#fieldColumnName"><span class="hs-identifier hs-var">fieldColumnName</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition NotNull part
+</span><a href="#local-6989586621679118714"><span class="hs-identifier hs-var">field</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">PrimaryKey key
+</span><a href="#local-6989586621679118716"><span class="hs-identifier hs-var">keyDef</span></a></span><span>
+</span><span id="line-152"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">NonEmpty ColumnName -&gt; PrimaryKeyExpr
+</span><a href="Orville.PostgreSQL.Internal.Expr.TableDefinition.html#primaryKeyExpr"><span class="hs-identifier hs-var">Expr.primaryKeyExpr</span></a></span><span> </span><span class="annot"><span class="annottext">NonEmpty ColumnName
+</span><a href="#local-6989586621679118715"><span class="hs-identifier hs-var">names</span></a></span><span>
+</span><span id="line-153"></span><span>
+</span><span id="line-154"></span><span class="hs-comment">{- |
+  'primaryKeyEquals' builds a 'WhereCondition' that will match the row where
+  the primary key is equal to the given value. For single-field primary keys
+  this is equivalent to 'fieldEquals', but 'primaryKeyEquals' also handles composite
+  primary keys.
+-}</span><span>
+</span><span id="line-160"></span><span id="local-6989586621679118768"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEquals"><span class="hs-identifier hs-type">primaryKeyEquals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118768"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118768"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span><span>
+</span><span id="line-161"></span><span id="primaryKeyEquals"><span class="annot"><span class="annottext">primaryKeyEquals :: PrimaryKey key -&gt; key -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEquals"><span class="hs-identifier hs-var hs-var">primaryKeyEquals</span></a></span></span><span> </span><span id="local-6989586621679118712"><span class="annot"><span class="annottext">PrimaryKey key
+</span><a href="#local-6989586621679118712"><span class="hs-identifier hs-var">keyDef</span></a></span></span><span> </span><span id="local-6989586621679118711"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118711"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-162"></span><span>  </span><span class="annot"><span class="annottext">(WhereCondition -&gt; WhereCondition -&gt; WhereCondition)
+-&gt; NonEmpty WhereCondition -&gt; WhereCondition
+forall a. (a -&gt; a -&gt; a) -&gt; NonEmpty a -&gt; a
+</span><a href="Orville.PostgreSQL.Internal.Extra.NonEmpty.html#foldl1%27"><span class="hs-identifier hs-var">ExtraNonEmpty.foldl1'</span></a></span><span>
+</span><span id="line-163"></span><span>    </span><span class="annot"><span class="annottext">WhereCondition -&gt; WhereCondition -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereAnd"><span class="hs-identifier hs-var">whereAnd</span></a></span><span>
+</span><span id="line-164"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(forall part.
+ (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; WhereCondition)
+-&gt; PrimaryKey key -&gt; NonEmpty WhereCondition
+forall key a.
+(forall part. (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; a)
+-&gt; PrimaryKey key -&gt; NonEmpty a
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#mapPrimaryKeyParts"><span class="hs-identifier hs-var">mapPrimaryKeyParts</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">key
+-&gt; (key -&gt; part) -&gt; FieldDefinition NotNull part -&gt; WhereCondition
+forall key a nullability.
+key
+-&gt; (key -&gt; a) -&gt; FieldDefinition nullability a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#partEquals"><span class="hs-identifier hs-var">partEquals</span></a></span><span> </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118711"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">PrimaryKey key
+</span><a href="#local-6989586621679118712"><span class="hs-identifier hs-var">keyDef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-165"></span><span>
+</span><span id="line-166"></span><span class="hs-comment">{- |
+  Like 'primaryKeyEquals', but returns the condition as a lower-level
+  'Expr.BooleanExpr'
+-}</span><span>
+</span><span id="line-170"></span><span id="local-6989586621679118708"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEqualsExpr"><span class="hs-identifier hs-type">primaryKeyEqualsExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#PrimaryKey"><span class="hs-identifier hs-type">PrimaryKey</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118708"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118708"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Where.BooleanExpr.html#BooleanExpr"><span class="hs-identifier hs-type">Expr.BooleanExpr</span></a></span></span><span>
+</span><span id="line-171"></span><span id="primaryKeyEqualsExpr"><span class="annot"><span class="annottext">primaryKeyEqualsExpr :: PrimaryKey key -&gt; key -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEqualsExpr"><span class="hs-identifier hs-var hs-var">primaryKeyEqualsExpr</span></a></span></span><span> </span><span id="local-6989586621679118707"><span class="annot"><span class="annottext">PrimaryKey key
+</span><a href="#local-6989586621679118707"><span class="hs-identifier hs-var">keyDef</span></a></span></span><span> </span><span id="local-6989586621679118706"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118706"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-172"></span><span>  </span><span class="annot"><span class="annottext">WhereCondition -&gt; BooleanExpr
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#whereConditionToBooleanExpr"><span class="hs-identifier hs-var">whereConditionToBooleanExpr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PrimaryKey key -&gt; key -&gt; WhereCondition
+forall key. PrimaryKey key -&gt; key -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#primaryKeyEquals"><span class="hs-identifier hs-var">primaryKeyEquals</span></a></span><span> </span><span class="annot"><span class="annottext">PrimaryKey key
+</span><a href="#local-6989586621679118707"><span class="hs-identifier hs-var">keyDef</span></a></span><span> </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118706"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-173"></span><span>
+</span><span id="line-174"></span><span class="hs-comment">{- |
+  INTERNAL: builds the where condition for a single part of the key
+-}</span><span>
+</span><span id="line-177"></span><span id="local-6989586621679118771"><span id="local-6989586621679118772"><span id="local-6989586621679118773"><span class="annot"><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#partEquals"><span class="hs-identifier hs-type">partEquals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679118773"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679118773"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679118772"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.FieldDefinition.html#FieldDefinition"><span class="hs-identifier hs-type">FieldDefinition</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118771"><span class="hs-identifier hs-type">nullability</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679118772"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#WhereCondition"><span class="hs-identifier hs-type">WhereCondition</span></a></span></span></span></span><span>
+</span><span id="line-178"></span><span id="partEquals"><span class="annot"><span class="annottext">partEquals :: key
+-&gt; (key -&gt; a) -&gt; FieldDefinition nullability a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.PrimaryKey.html#partEquals"><span class="hs-identifier hs-var hs-var">partEquals</span></a></span></span><span> </span><span id="local-6989586621679118705"><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118705"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679118704"><span class="annot"><span class="annottext">key -&gt; a
+</span><a href="#local-6989586621679118704"><span class="hs-identifier hs-var">getPart</span></a></span></span><span> </span><span id="local-6989586621679118703"><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118703"><span class="hs-identifier hs-var">partField</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-179"></span><span>  </span><span class="annot"><span class="annottext">FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+forall nullability a.
+FieldDefinition nullability a -&gt; a -&gt; WhereCondition
+</span><a href="Orville.PostgreSQL.Internal.SelectOptions.WhereCondition.html#fieldEquals"><span class="hs-identifier hs-var">fieldEquals</span></a></span><span> </span><span class="annot"><span class="annottext">FieldDefinition nullability a
+</span><a href="#local-6989586621679118703"><span class="hs-identifier hs-var">partField</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">key -&gt; a
+</span><a href="#local-6989586621679118704"><span class="hs-identifier hs-var">getPart</span></a></span><span> </span><span class="annot"><span class="annottext">key
+</span><a href="#local-6989586621679118705"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-180"></span></pre></body></html>

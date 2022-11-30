@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+Module    : Orville.PostgreSQL.Internal.Expr.Update.SetClauseList
+Copyright : Flipstone Technology Partners 2021
+License   : MIT
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Update.SetClauseList</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClauseList.html#SetClauseList"><span class="hs-identifier">SetClauseList</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClauseList.html#setClauseList"><span class="hs-identifier">setClauseList</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NonEmpty</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.Expr.Update.SetClause</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier">SetClause</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html"><span class="hs-identifier">Orville.PostgreSQL.Internal.RawSql</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RawSql</span></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">newtype</span><span> </span><span id="SetClauseList"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClauseList.html#SetClauseList"><span class="hs-identifier hs-var">SetClauseList</span></a></span></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="SetClauseList"><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClauseList.html#SetClauseList"><span class="hs-identifier hs-var">SetClauseList</span></a></span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.RawSql.html#RawSql"><span class="hs-identifier hs-type">RawSql.RawSql</span></a></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679116585"><span id="local-6989586621679116587"><span class="annot"><span class="annottext">RawSql -&gt; SetClauseList
+SetClauseList -&gt; RawSql
+(SetClauseList -&gt; RawSql)
+-&gt; (RawSql -&gt; SetClauseList) -&gt; SqlExpression SetClauseList
+forall a. (a -&gt; RawSql) -&gt; (RawSql -&gt; a) -&gt; SqlExpression a
+unsafeFromRawSql :: RawSql -&gt; SetClauseList
+$cunsafeFromRawSql :: RawSql -&gt; SetClauseList
+toRawSql :: SetClauseList -&gt; RawSql
+$ctoRawSql :: SetClauseList -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#C%3ASqlExpression"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">RawSql.SqlExpression</span></a></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClauseList.html#setClauseList"><span class="hs-identifier hs-type">setClauseList</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClause.html#SetClause"><span class="hs-identifier hs-type">SetClause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClauseList.html#SetClauseList"><span class="hs-identifier hs-type">SetClauseList</span></a></span><span>
+</span><span id="line-24"></span><span id="setClauseList"><span class="annot"><span class="annottext">setClauseList :: NonEmpty SetClause -&gt; SetClauseList
+</span><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClauseList.html#setClauseList"><span class="hs-identifier hs-var hs-var">setClauseList</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-25"></span><span>  </span><span class="annot"><span class="annottext">RawSql -&gt; SetClauseList
+</span><a href="Orville.PostgreSQL.Internal.Expr.Update.SetClauseList.html#SetClauseList"><span class="hs-identifier hs-var">SetClauseList</span></a></span><span> </span><span class="annot"><span class="annottext">(RawSql -&gt; SetClauseList)
+-&gt; (NonEmpty SetClause -&gt; RawSql)
+-&gt; NonEmpty SetClause
+-&gt; SetClauseList
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">RawSql -&gt; NonEmpty SetClause -&gt; RawSql
+forall sql (f :: * -&gt; *).
+(SqlExpression sql, Foldable f) =&gt;
+RawSql -&gt; f sql -&gt; RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#intercalate"><span class="hs-identifier hs-var">RawSql.intercalate</span></a></span><span> </span><span class="annot"><span class="annottext">RawSql
+</span><a href="Orville.PostgreSQL.Internal.RawSql.html#comma"><span class="hs-identifier hs-var">RawSql.comma</span></a></span><span>
+</span><span id="line-26"></span></pre></body></html>
