@@ -66,9 +66,7 @@ selectQueryRawRows = selectQueryRaw rowFromSql
 rowFromSql :: FromSql [(String, SqlValue)]
 rowFromSql =
   FromSql
-    { fromSqlSelects =
-        error
-          "Database.Orville.PostgreSQL.Select.rowFromSql: fromSqlColumnNames was accessed. This is a bug."
+    { fromSqlSelects = []
     , runFromSql = Right <$> ask
     }
 

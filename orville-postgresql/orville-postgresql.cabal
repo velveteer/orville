@@ -3,11 +3,9 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 671edec7076d0e3f187aef5cb98e6d2bbc5bf0a554eb69945f503117cf8617b5
 
 name:           orville-postgresql
-version:        0.9.0.0
+version:        0.9.3.0
 synopsis:       ORM
 description:    ORM library for PostgreSQL
 category:       Database
@@ -15,9 +13,9 @@ author:         Flipstone Technology Partners
 maintainer:     development@flipstone.com
 license:        MIT
 license-file:   LICENSE
+build-type:     Simple
 tested-with:
     GHC == 7.10.3, GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4
-build-type:     Simple
 extra-source-files:
     README.md
 
@@ -89,6 +87,7 @@ library
   default-extensions:
       GeneralizedNewtypeDeriving
       MultiParamTypeClasses
+      StrictData
   ghc-options: -Wall -fno-warn-orphans -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   build-depends:
       HDBC >=2.4
@@ -127,6 +126,7 @@ executable orville-sample-exe
   default-extensions:
       GeneralizedNewtypeDeriving
       MultiParamTypeClasses
+      StrictData
   ghc-options: -Wall -fno-warn-orphans -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HDBC >=2.4
@@ -197,6 +197,7 @@ test-suite spec
   default-extensions:
       GeneralizedNewtypeDeriving
       MultiParamTypeClasses
+      StrictData
   ghc-options: -Wall -fno-warn-orphans -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   build-depends:
       HDBC >=2.4
