@@ -25,7 +25,6 @@ import qualified Data.Int as Int
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as Enc
 import qualified Data.Time as Time
-import Data.Typeable
 import qualified Database.HDBC as HDBC
 
 {-|
@@ -416,5 +415,3 @@ data RowDataErrorReason
       !Integer -- ^ Actual value
   | DecodingFailure !String
   -- ^ Generic decoding failure
-  deriving Typeable
-

@@ -11,14 +11,12 @@ License   : MIT
 module Database.Orville.PostgreSQL.Internal.Types where
 
 import Control.Exception
-import Control.Monad (join)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
 import qualified Data.Char as Char
 import qualified Data.List as List
-import Data.Typeable
 import Database.HDBC
 
 import qualified Data.Time as Time
@@ -150,7 +148,6 @@ data FromSqlError
     -- ^ A conversion between haskell representations failed at a point where
     -- we don't know what column the value came from. This is the case when
     -- using the 'partialMap' combinator.
-  deriving Typeable
 
 instance Show FromSqlError where
   show = showFromSqlErrorMinimal
@@ -162,7 +159,7 @@ data RowDataErrorDetails =
     -- ^ Column name for the erroneous value
     , rowErrorPrimaryKeys :: ![(String, SqlValue)]
     -- ^ Primary keys. Empty if not known
-    } deriving Typeable
+    }
 
 data MissingColumnDetails =
   MissingColumnDetails
