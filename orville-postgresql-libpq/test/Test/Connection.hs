@@ -16,9 +16,9 @@ import qualified Hedgehog as HH
 import qualified Hedgehog.Range as Range
 
 import qualified Orville.PostgreSQL.Connection as Connection
-import qualified Orville.PostgreSQL.Internal.PGTextFormatValue as PGTextFormatValue
+import qualified Orville.PostgreSQL.Internal.PgTextFormatValue as PgTextFormatValue
 
-import qualified Test.PGGen as PGGen
+import qualified Test.PgGen as PgGen
 import qualified Test.Property as Property
 
 connectionTests :: Pool.Pool Connection.Connection -> Property.Group
@@ -27,7 +27,7 @@ connectionTests pool =
     [
       ( String.fromString "executeRaw can pass non-null bytes equivalents whether checked for NUL or not"
       , HH.property $ do
-          text <- HH.forAll $ PGGen.pgText (Range.linear 0 256)
+          text <- HH.forAll $ PgGen.pgText (Range.linear 0 256)
 
           let notNulBytes =
                 Enc.encodeUtf8 text
@@ -38,8 +38,8 @@ connectionTests pool =
                 Connection.executeRaw
                   connection
                   (B8.pack "SELECT $1::text = $2::text")
-                  [ Just $ PGTextFormatValue.fromByteString notNulBytes
-                  , Just $ PGTextFormatValue.unsafeFromByteString notNulBytes
+                  [ Just $ PgTextFormatValue.fromByteString notNulBytes
+                  , Just $ PgTextFormatValue.unsafeFromByteString notNulBytes
                   ]
 
               LibPQ.getvalue' result 0 0
@@ -49,8 +49,8 @@ connectionTests pool =
     ,
       ( String.fromString "executeRaw returns error if nul byte is given using safe constructor"
       , HH.property $ do
-          textBefore <- HH.forAll $ PGGen.pgText (Range.linear 0 32)
-          textAfter <- HH.forAll $ PGGen.pgText (Range.linear 0 32)
+          textBefore <- HH.forAll $ PgGen.pgText (Range.linear 0 32)
+          textAfter <- HH.forAll $ PgGen.pgText (Range.linear 0 32)
 
           let bytesWithNul =
                 B8.concat
@@ -64,11 +64,11 @@ connectionTests pool =
               Connection.executeRaw
                 connection
                 (B8.pack "SELECT $1::text")
-                [ Just $ PGTextFormatValue.fromByteString bytesWithNul
+                [ Just $ PgTextFormatValue.fromByteString bytesWithNul
                 ]
 
           case result of
-            Left PGTextFormatValue.NULByteFoundError ->
+            Left PgTextFormatValue.NULByteFoundError ->
               HH.success
             Right _ -> do
               HH.footnote "Expected 'executeRaw' to return failure, but it did not"
@@ -77,8 +77,8 @@ connectionTests pool =
     ,
       ( String.fromString "executeRaw truncates values at the nul byte given using unsafe constructor"
       , HH.property $ do
-          textBefore <- HH.forAll $ PGGen.pgText (Range.linear 0 32)
-          textAfter <- HH.forAll $ PGGen.pgText (Range.linear 0 32)
+          textBefore <- HH.forAll $ PgGen.pgText (Range.linear 0 32)
+          textAfter <- HH.forAll $ PgGen.pgText (Range.linear 0 32)
 
           let bytesBefore =
                 Enc.encodeUtf8 textBefore
@@ -96,7 +96,7 @@ connectionTests pool =
                 Connection.executeRaw
                   connection
                   (B8.pack "SELECT $1::text")
-                  [ Just $ PGTextFormatValue.unsafeFromByteString bytesWithNul
+                  [ Just $ PgTextFormatValue.unsafeFromByteString bytesWithNul
                   ]
 
               LibPQ.getvalue' result 0 0
@@ -110,7 +110,7 @@ connectionTests pool =
       , Property.singletonProperty $ do
           -- We generate non-empty queries here becaues libpq returns different
           -- error details when an empty string is passed
-          randomText <- HH.forAll $ PGGen.pgText (Range.constant 1 16)
+          randomText <- HH.forAll $ PgGen.pgText (Range.constant 1 16)
 
           result <-
             MIO.liftIO . E.try . Pool.withResource pool $ \connection ->

@@ -11,6 +11,8 @@ module Orville.PostgreSQL.Internal.Expr.ColumnDefinition
     ColumnConstraint,
     notNullConstraint,
     nullConstraint,
+    ColumnDefault,
+    columnDefault,
     DataType,
     timestampWithZone,
     timestampWithoutZone,
@@ -19,6 +21,7 @@ module Orville.PostgreSQL.Internal.Expr.ColumnDefinition
     varchar,
     char,
     text,
+    uuid,
     boolean,
     doublePrecision,
     bigSerial,
@@ -31,8 +34,10 @@ module Orville.PostgreSQL.Internal.Expr.ColumnDefinition
 where
 
 import Data.Int (Int32)
+import qualified Data.Maybe as Maybe
 
 import Orville.PostgreSQL.Internal.Expr.Name (ColumnName)
+import Orville.PostgreSQL.Internal.Expr.ValueExpression (ValueExpression)
 import qualified Orville.PostgreSQL.Internal.RawSql as RawSql
 
 newtype ColumnDefinition
@@ -43,14 +48,17 @@ columnDefinition ::
   ColumnName ->
   DataType ->
   Maybe ColumnConstraint ->
+  Maybe ColumnDefault ->
   ColumnDefinition
-columnDefinition columnName dataType columnConstraint =
+columnDefinition columnName dataType maybeColumnConstraint maybeColumnDefault =
   ColumnDefinition $
-    RawSql.toRawSql columnName
-      <> RawSql.space
-      <> RawSql.toRawSql dataType
-      <> RawSql.space
-      <> maybe mempty RawSql.toRawSql columnConstraint
+    RawSql.intercalate RawSql.space $
+      Maybe.catMaybes
+        [ Just $ RawSql.toRawSql columnName
+        , Just $ RawSql.toRawSql dataType
+        , fmap RawSql.toRawSql maybeColumnConstraint
+        , fmap RawSql.toRawSql maybeColumnDefault
+        ]
 
 newtype ColumnConstraint
   = ColumnConstraint RawSql.RawSql
@@ -63,6 +71,16 @@ notNullConstraint =
 nullConstraint :: ColumnConstraint
 nullConstraint =
   ColumnConstraint (RawSql.fromString "NULL")
+
+newtype ColumnDefault
+  = ColumnDefault RawSql.RawSql
+  deriving (RawSql.SqlExpression)
+
+columnDefault ::
+  ValueExpression ->
+  ColumnDefault
+columnDefault defaultValue =
+  ColumnDefault (RawSql.fromString "DEFAULT " <> RawSql.toRawSql defaultValue)
 
 newtype DataType
   = DataType RawSql.RawSql
@@ -92,7 +110,7 @@ varchar len =
   --  STATEMENT:  CREATE TABLE field_definition_test(foo VARCHAR($1))
   DataType $
     RawSql.fromString "VARCHAR("
-      <> RawSql.fromString (show len)
+      <> RawSql.int32DecLiteral len
       <> RawSql.fromString ")"
 
 char :: Int32 -> DataType
@@ -103,12 +121,16 @@ char len =
   --  STATEMENT:  CREATE TABLE field_definition_test(foo CHAR($1))
   DataType $
     RawSql.fromString "CHAR("
-      <> RawSql.fromString (show len)
+      <> RawSql.int32DecLiteral len
       <> RawSql.fromString ")"
 
 text :: DataType
 text =
   DataType (RawSql.fromString "TEXT")
+
+uuid :: DataType
+uuid =
+  DataType (RawSql.fromString "UUID")
 
 boolean :: DataType
 boolean =

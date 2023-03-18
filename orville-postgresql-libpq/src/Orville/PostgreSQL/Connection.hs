@@ -11,9 +11,10 @@ module Orville.PostgreSQL.Connection
     ConnectionUsedAfterCloseError,
     ConnectionError,
     SqlExecutionError (..),
+    NoticeReporting (EnableNoticeReporting, DisableNoticeReporting),
     createConnectionPool,
     executeRaw,
-    executeRawVoid,
+    escapeStringLiteral,
   )
 where
 
@@ -30,12 +31,22 @@ import qualified Data.Text.Encoding as Enc
 import Data.Time (NominalDiffTime)
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 
-import Orville.PostgreSQL.Internal.PGTextFormatValue (NULByteFoundError (NULByteFoundError), PGTextFormatValue, toBytesForLibPQ)
+import Orville.PostgreSQL.Internal.PgTextFormatValue (NULByteFoundError (NULByteFoundError), PgTextFormatValue, toBytesForLibPQ)
+
+{- |
+  An option for 'createConnectionPool' than indicates whether the LibPQ should
+  print notice reports for warnings to the console
+-}
+data NoticeReporting
+  = EnableNoticeReporting
+  | DisableNoticeReporting
 
 {- |
  'createConnectionPool' allocates a pool of connections to a PosgreSQL server.
 -}
 createConnectionPool ::
+  -- | Whether or not notice reporting from LibPQ should be enabled
+  NoticeReporting ->
   -- | Number of stripes in the connection pool
   Int ->
   -- | Linger time before closing an idle connection
@@ -45,8 +56,8 @@ createConnectionPool ::
   -- | A PostgreSQL connection string
   BS.ByteString ->
   IO (Pool Connection)
-createConnectionPool stripes linger maxRes connectionString =
-  createPool (connect connectionString) close stripes linger maxRes
+createConnectionPool noticeReporting stripes linger maxRes connectionString =
+  createPool (connect noticeReporting connectionString) close stripes linger maxRes
 
 {- |
  'executeRaw' runs a given SQL statement returning the raw underlying result.
@@ -59,7 +70,7 @@ createConnectionPool stripes linger maxRes connectionString =
 executeRaw ::
   Connection ->
   BS.ByteString ->
-  [Maybe PGTextFormatValue] ->
+  [Maybe PgTextFormatValue] ->
   IO LibPQ.Result
 executeRaw connection bs params =
   case traverse (traverse toBytesForLibPQ) params of
@@ -67,15 +78,6 @@ executeRaw connection bs params =
       throwIO NULByteFoundError
     Right paramBytes ->
       underlyingExecute bs paramBytes connection
-
-{- |
- 'executeRawVoid' a version of 'executeRaw' that completely ignores the result.
- If an error occurs it is raised as an exception.
- Use with caution.
--}
-executeRawVoid :: Connection -> BS.ByteString -> [Maybe PGTextFormatValue] -> IO ()
-executeRawVoid connection bs params =
-  void $ executeRaw connection bs params
 
 {- |
  The basic connection interface.
@@ -90,8 +92,8 @@ newtype Connection = Connection (MVar LibPQ.Connection)
  Note that handling the libpq connection with the polling is described at
  <https://hackage.haskell.org/package/postgresql-libpq-0.9.4.2/docs/Database-PostgreSQL-LibPQ.html>.
 -}
-connect :: BS.ByteString -> IO Connection
-connect connectionString =
+connect :: NoticeReporting -> BS.ByteString -> IO Connection
+connect noticeReporting connectionString =
   let checkSocketAndThreadWait conn threadWaitFn = do
         fd <- LibPQ.socket conn
         case fd of
@@ -115,6 +117,9 @@ connect connectionString =
             pure (Connection connectionHandle)
    in do
         connection <- LibPQ.connectStart connectionString
+        case noticeReporting of
+          DisableNoticeReporting -> LibPQ.disableNoticeReporting connection
+          EnableNoticeReporting -> LibPQ.enableNoticeReporting connection
         poll connection
 
 {- |
@@ -156,26 +161,49 @@ underlyingExecute ::
   [Maybe BS.ByteString] ->
   Connection ->
   IO LibPQ.Result
-underlyingExecute bs params (Connection handle') = do
-  mbConn <- tryReadMVar handle'
+underlyingExecute bs params connection = do
+  libPQConn <- readLibPQConnectionOrFailIfClosed connection
+  mbResult <-
+    LibPQ.execParams libPQConn bs (map mkInferredTextParam params) LibPQ.Text
+
+  case mbResult of
+    Nothing -> do
+      throwConnectionError "No result returned from exec by libpq" libPQConn
+    Just result -> do
+      execStatus <- LibPQ.resultStatus result
+
+      if isRowReadableStatus execStatus
+        then pure result
+        else do
+          throwLibPQResultError result execStatus bs
+
+{- |
+  Escapes a string for use as a literal within a  SQL command that will be
+  execute on the given connection. This uses the @PQescapeStringConn@ function
+  from libpq, which takes the character encoding of the connection into
+  account. This function only escapes the characters to be used in as a string
+  literal -- it does not add the surrounding quotes.
+-}
+escapeStringLiteral :: Connection -> BS.ByteString -> IO BS.ByteString
+escapeStringLiteral connection unescapedString = do
+  libPQConn <- readLibPQConnectionOrFailIfClosed connection
+  mbEscapedString <- LibPQ.escapeStringConn libPQConn unescapedString
+
+  case mbEscapedString of
+    Nothing ->
+      throwConnectionError "Error while escaping string literal" libPQConn
+    Just escapedString ->
+      pure escapedString
+
+readLibPQConnectionOrFailIfClosed :: Connection -> IO LibPQ.Connection
+readLibPQConnectionOrFailIfClosed (Connection handle) = do
+  mbConn <- tryReadMVar handle
 
   case mbConn of
     Nothing ->
       throwIO ConnectionUsedAfterCloseError
-    Just conn -> do
-      mbResult <-
-        LibPQ.execParams conn bs (map mkInferredTextParam params) LibPQ.Text
-
-      case mbResult of
-        Nothing -> do
-          throwConnectionError "No result returned from exec by libpq" conn
-        Just result -> do
-          execStatus <- LibPQ.resultStatus result
-
-          if isRowReadableStatus execStatus
-            then pure result
-            else do
-              throwLibPQResultError result execStatus bs
+    Just conn ->
+      pure conn
 
 throwConnectionError :: String -> LibPQ.Connection -> IO a
 throwConnectionError message conn = do

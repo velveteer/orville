@@ -264,7 +264,7 @@ prop_planEither =
 
     foundFoo <-
       Foo.withTable pool $ do
-        Orville.insertEntity Foo.table foo
+        _ <- Orville.insertEntity Foo.table foo
         Plan.execute plan param
 
     foundFoo === foo
@@ -319,8 +319,8 @@ prop_bindAndUse =
 
     result <-
       FooChild.withTables pool $ do
-        Orville.insertEntity Foo.table foo
-        Orville.insertEntity FooChild.table fooChild
+        _ <- Orville.insertEntity Foo.table foo
+        _ <- Orville.insertEntity FooChild.table fooChild
         Plan.execute plan (Foo.fooName foo)
 
     result === (foo, [fooChild])
@@ -376,8 +376,8 @@ prop_bindAndUse_qualifiedDo =
 
     result <-
       FooChild.withTables pool $ do
-        Orville.insertEntity Foo.table foo
-        Orville.insertEntity FooChild.table fooChild
+        _ <- Orville.insertEntity Foo.table foo
+        _ <- Orville.insertEntity FooChild.table fooChild
         Plan.execute plan (Foo.fooName foo)
 
     result === (foo, [fooChild])
@@ -441,8 +441,8 @@ prop_explain =
           Plan.explain plan
 
     explanation
-      === [ "SELECT \"name\",\"id\",\"name\",\"age\" FROM \"foo\" WHERE (\"name\" = $1)"
-          , "SELECT \"foo_id\",\"id\",\"foo_id\" FROM \"foo_child\" WHERE (\"foo_id\" = $1)"
+      === [ "SELECT \"name\",\"id\",\"name\",\"age\" FROM \"foo\" WHERE \"name\" = $1"
+          , "SELECT \"foo_id\",\"id\",\"foo_id\" FROM \"foo_child\" WHERE \"foo_id\" = $1"
           ]
 
 {- |

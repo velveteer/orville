@@ -4,6 +4,7 @@
 module Orville.PostgreSQL.Internal.PrimaryKey
   ( PrimaryKey,
     primaryKeyDescription,
+    primaryKeyFieldNames,
     primaryKeyToSql,
     primaryKey,
     PrimaryKeyPart,
@@ -20,7 +21,8 @@ import qualified Data.List as List
 import Data.List.NonEmpty (NonEmpty ((:|)), toList)
 
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
-import Orville.PostgreSQL.Internal.FieldDefinition (FieldDefinition, NotNull, fieldColumnName, fieldName, fieldNameToString, fieldValueToSqlValue)
+import qualified Orville.PostgreSQL.Internal.Extra.NonEmpty as ExtraNonEmpty
+import Orville.PostgreSQL.Internal.FieldDefinition (FieldDefinition, FieldName, NotNull, fieldColumnName, fieldName, fieldNameToString, fieldValueToSqlValue)
 import Orville.PostgreSQL.Internal.SelectOptions (WhereCondition, fieldEquals, whereAnd, whereConditionToBooleanExpr)
 import qualified Orville.PostgreSQL.Internal.SqlValue as SqlValue
 
@@ -46,11 +48,21 @@ data PrimaryKeyPart key
   list of the names of the fields that make up the primary key.
 -}
 primaryKeyDescription :: PrimaryKey key -> String
-primaryKeyDescription keyDef =
-  let partName :: (part -> key) -> FieldDefinition NotNull a -> String
+primaryKeyDescription =
+  List.intercalate ", "
+    . map fieldNameToString
+    . toList
+    . primaryKeyFieldNames
+
+{- |
+  Retrieves the names of the fields that are part of the primary key.
+-}
+primaryKeyFieldNames :: PrimaryKey key -> NonEmpty FieldName
+primaryKeyFieldNames =
+  let partName :: (part -> key) -> FieldDefinition NotNull a -> FieldName
       partName _ field =
-        fieldNameToString (fieldName field)
-   in List.intercalate ", " (toList $ mapPrimaryKeyParts partName keyDef)
+        fieldName field
+   in mapPrimaryKeyParts partName
 
 {- |
   'primaryKeyToSql' converts a Haskell value for a primary key into the
@@ -142,12 +154,14 @@ mkPrimaryKeyExpr keyDef =
 {- |
   'primaryKeyEquals' builds a 'WhereCondition' that will match the row where
   the primary key is equal to the given value. For single-field primary keys
-  this is equivalent to '.==', but 'primaryKeyEquals also handles composite
+  this is equivalent to 'fieldEquals', but 'primaryKeyEquals' also handles composite
   primary keys.
 -}
 primaryKeyEquals :: PrimaryKey key -> key -> WhereCondition
 primaryKeyEquals keyDef key =
-  whereAnd (mapPrimaryKeyParts (partEquals key) keyDef)
+  ExtraNonEmpty.foldl1'
+    whereAnd
+    (mapPrimaryKeyParts (partEquals key) keyDef)
 
 {- |
   Like 'primaryKeyEquals', but returns the condition as a lower-level

@@ -16,12 +16,11 @@ import qualified Data.String as String
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Builder as LTB
-import qualified Data.Text.Lazy.Builder.Int as LTBI
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 
 import qualified Orville.PostgreSQL as Orville
 import Orville.PostgreSQL.PgCatalog.OidField (oidField, oidTypeField)
-import Orville.PostgreSQL.PgCatalog.PgAttribute (AttributeNumber, attributeNumberToInt16)
+import Orville.PostgreSQL.PgCatalog.PgAttribute (AttributeNumber, attributeNumberParser, attributeNumberTextBuilder)
 
 {- |
   The Haskell representation of data read from the @pg_catalog.pg_constraint@
@@ -40,6 +39,9 @@ data PgConstraint = PgConstraint
   , -- | The PostgreSQL @oid@ of the table that the constraint is on
     -- (or @0@ if not a table constraint)
     pgConstraintRelationOid :: LibPQ.Oid
+  , -- | The PostgreSQL @oid@ ef the index supporting this constraint, if it's a
+    -- unique, primary key, foreign key or exclusion constraint. Otherwise @0@.
+    pgConstraintIndexOid :: LibPQ.Oid
   , -- | For table constraints, the attribute numbers of the constrained columns. These
     -- correspond to the 'pgAttributeNumber' field of 'PgAttribute'.
     pgConstraintKey :: Maybe [AttributeNumber]
@@ -49,6 +51,10 @@ data PgConstraint = PgConstraint
   , -- | For foreignkey constraints, the attribute numbers of the referenced columns. These
     -- correspond to the 'pgAttributeNumber' field of 'PgAttribute'.
     pgConstraintForeignKey :: Maybe [AttributeNumber]
+  , -- | For foreignkey constraints, the on update action type
+    pgConstraintForeignKeyOnUpdateType :: Maybe Orville.ForeignKeyAction
+  , -- | For foreignkey constraints, the on delete action type
+    pgConstraintForeignKeyOnDeleteType :: Maybe Orville.ForeignKeyAction
   }
 
 {- |
@@ -101,16 +107,50 @@ constraintTypeToPgText conType =
 
   See also 'constraintTypeToPgText'
 -}
-pgTextToConstraintType :: T.Text -> Maybe ConstraintType
+pgTextToConstraintType :: T.Text -> Either String ConstraintType
 pgTextToConstraintType text =
   case T.unpack text of
-    "c" -> Just CheckConstraint
-    "f" -> Just ForeignKeyConstraint
-    "p" -> Just PrimaryKeyConstraint
-    "u" -> Just UniqueConstraint
-    "t" -> Just ConstraintTrigger
-    "x" -> Just ExclusionConstraint
-    _ -> Nothing
+    "c" -> Right CheckConstraint
+    "f" -> Right ForeignKeyConstraint
+    "p" -> Right PrimaryKeyConstraint
+    "u" -> Right UniqueConstraint
+    "t" -> Right ConstraintTrigger
+    "x" -> Right ExclusionConstraint
+    typ -> Left ("Unrecognized PostgreSQL constraint type: " <> typ)
+
+{- |
+  Converts a 'Maybe Orville.ForeignKeyAction' to the corresponding single character
+  text representation used by PostgreSQL.
+
+  See also 'pgTextToForeignKeyAction'
+-}
+foreignKeyActionToPgText :: Maybe Orville.ForeignKeyAction -> T.Text
+foreignKeyActionToPgText mbfkAction =
+  T.pack $
+    case mbfkAction of
+      Just Orville.NoAction -> "a"
+      Just Orville.Restrict -> "r"
+      Just Orville.Cascade -> "c"
+      Just Orville.SetNull -> "n"
+      Just Orville.SetDefault -> "d"
+      Nothing -> " "
+
+{- |
+  Attempts to parse a PostgreSQL single character textual value as a
+  'Maybe Orville.ForeignKeyAction'
+
+  See also 'foreignKeyActionToPgText'
+-}
+pgTextToForeignKeyAction :: T.Text -> Either String (Maybe Orville.ForeignKeyAction)
+pgTextToForeignKeyAction text =
+  case T.unpack text of
+    "a" -> Right $ Just Orville.NoAction
+    "r" -> Right $ Just Orville.Restrict
+    "c" -> Right $ Just Orville.Cascade
+    "n" -> Right $ Just Orville.SetNull
+    "d" -> Right $ Just Orville.SetDefault
+    " " -> Right Nothing
+    typ -> Left ("Unrecognized PostgreSQL foreign key action type: " <> typ)
 
 {- |
   An Orville 'Orville.TableDefinition' for querying the
@@ -132,9 +172,12 @@ pgConstraintMarshaller =
     <*> Orville.marshallField pgConstraintNamespaceOid constraintNamespaceOidField
     <*> Orville.marshallField pgConstraintType constraintTypeField
     <*> Orville.marshallField pgConstraintRelationOid constraintRelationOidField
+    <*> Orville.marshallField pgConstraintIndexOid constraintIndexOidField
     <*> Orville.marshallField pgConstraintKey constraintKeyField
     <*> Orville.marshallField pgConstraintForeignRelationOid constraintForeignRelationOidField
     <*> Orville.marshallField pgConstraintForeignKey constraintForeignKeyField
+    <*> Orville.marshallField pgConstraintForeignKeyOnUpdateType constraintForeignKeyOnUpdateTypeField
+    <*> Orville.marshallField pgConstraintForeignKeyOnDeleteType constraintForeignKeyOnDeleteTypeField
 
 {- |
   The @conname@ column of the @pg_constraint@ table
@@ -157,7 +200,7 @@ constraintNamespaceOidField =
 constraintTypeField :: Orville.FieldDefinition Orville.NotNull ConstraintType
 constraintTypeField =
   Orville.convertField
-    (Orville.maybeConvertSqlType constraintTypeToPgText pgTextToConstraintType)
+    (Orville.tryConvertSqlType constraintTypeToPgText pgTextToConstraintType)
     (Orville.unboundedTextField "contype")
 
 {- |
@@ -168,13 +211,20 @@ constraintRelationOidField =
   oidTypeField "conrelid"
 
 {- |
+  The @conindid@ column of the @pg_constraint@ table
+-}
+constraintIndexOidField :: Orville.FieldDefinition Orville.NotNull LibPQ.Oid
+constraintIndexOidField =
+  oidTypeField "conindid"
+
+{- |
   The @conkey@ column of the @pg_constraint@ table
 -}
 constraintKeyField :: Orville.FieldDefinition Orville.Nullable (Maybe [AttributeNumber])
 constraintKeyField =
   Orville.nullableField $
     Orville.convertField
-      (Orville.maybeConvertSqlType attributeNumberListToPgText pgTextToAttributeNumberList)
+      (Orville.tryConvertSqlType attributeNumberListToPgArrayText pgArrayTextToAttributeNumberList)
       (Orville.unboundedTextField "conkey")
 
 {- |
@@ -191,28 +241,37 @@ constraintForeignKeyField :: Orville.FieldDefinition Orville.Nullable (Maybe [At
 constraintForeignKeyField =
   Orville.nullableField $
     Orville.convertField
-      (Orville.maybeConvertSqlType attributeNumberListToPgText pgTextToAttributeNumberList)
+      (Orville.tryConvertSqlType attributeNumberListToPgArrayText pgArrayTextToAttributeNumberList)
       (Orville.unboundedTextField "confkey")
 
-pgTextToAttributeNumberList :: T.Text -> Maybe [AttributeNumber]
-pgTextToAttributeNumberList text =
+constraintForeignKeyOnUpdateTypeField :: Orville.FieldDefinition Orville.NotNull (Maybe Orville.ForeignKeyAction)
+constraintForeignKeyOnUpdateTypeField =
+  Orville.convertField
+    (Orville.tryConvertSqlType foreignKeyActionToPgText pgTextToForeignKeyAction)
+    (Orville.unboundedTextField "confupdtype")
+
+constraintForeignKeyOnDeleteTypeField :: Orville.FieldDefinition Orville.NotNull (Maybe Orville.ForeignKeyAction)
+constraintForeignKeyOnDeleteTypeField =
+  Orville.convertField
+    (Orville.tryConvertSqlType foreignKeyActionToPgText pgTextToForeignKeyAction)
+    (Orville.unboundedTextField "confdeltype")
+
+pgArrayTextToAttributeNumberList :: T.Text -> Either String [AttributeNumber]
+pgArrayTextToAttributeNumberList text =
   let parser = do
         _ <- AttoText.char '{'
-        attNums <- AttoText.sepBy (AttoText.signed AttoText.decimal) (AttoText.char ',')
+        attNums <- AttoText.sepBy attributeNumberParser (AttoText.char ',')
         _ <- AttoText.char '}'
         AttoText.endOfInput
         pure attNums
    in case AttoText.parseOnly parser text of
-        Left _ -> Nothing
-        Right nums -> Just nums
+        Left err -> Left ("Unable to decode PostgreSQL Array as AttributeNumber list: " <> err)
+        Right nums -> Right nums
 
-attributeNumberListToPgText :: [AttributeNumber] -> T.Text
-attributeNumberListToPgText attNums =
-  let buildAttNum =
-        LTBI.decimal . attributeNumberToInt16
-
-      commaDelimitedAttributeNumbers =
+attributeNumberListToPgArrayText :: [AttributeNumber] -> T.Text
+attributeNumberListToPgArrayText attNums =
+  let commaDelimitedAttributeNumbers =
         mconcat $
-          List.intersperse (LTB.singleton ',') (map buildAttNum attNums)
+          List.intersperse (LTB.singleton ',') (map attributeNumberTextBuilder attNums)
    in LT.toStrict . LTB.toLazyText $
         LTB.singleton '{' <> commaDelimitedAttributeNumbers <> LTB.singleton '}'

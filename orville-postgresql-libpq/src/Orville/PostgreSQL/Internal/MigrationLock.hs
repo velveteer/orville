@@ -14,6 +14,7 @@ import Data.Int (Int32)
 import qualified Orville.PostgreSQL.Internal.Execute as Execute
 import qualified Orville.PostgreSQL.Internal.FieldDefinition as FieldDefinition
 import qualified Orville.PostgreSQL.Internal.MonadOrville as MonadOrville
+import qualified Orville.PostgreSQL.Internal.QueryType as QueryType
 import qualified Orville.PostgreSQL.Internal.RawSql as RawSql
 import qualified Orville.PostgreSQL.Internal.SqlMarshaller as SqlMarshaller
 import qualified Orville.PostgreSQL.Internal.SqlValue as SqlValue
@@ -40,7 +41,7 @@ withLockedTransaction action = do
     runWithTransaction =
       Transaction.withTransaction $ do
         tryLockResults <-
-          Execute.executeAndDecode tryLockExpr lockedMarshaller
+          Execute.executeAndDecode QueryType.OtherQuery tryLockExpr lockedMarshaller
 
         case tryLockResults of
           [True] ->
@@ -54,7 +55,7 @@ withLockedTransaction action = do
             -- Orville process migrating the same schema). We must exit the
             -- current transaction and enter a new one, acquiring the lock
             -- again in that new transaction.
-            Execute.executeVoid waitForLockExpr
+            Execute.executeVoid QueryType.OtherQuery waitForLockExpr
             pure Nothing
           rows ->
             MIO.liftIO . throwIO . MigrationLockError $
@@ -66,24 +67,29 @@ orvilleLockScope = 17772
 migrationLockId :: Int32
 migrationLockId = 7995632
 
-lockedMarshaller :: SqlMarshaller.SqlMarshaller Bool Bool
+lockedMarshaller :: SqlMarshaller.AnnotatedSqlMarshaller Bool Bool
 lockedMarshaller =
-  SqlMarshaller.marshallField id (FieldDefinition.booleanField "locked")
+  SqlMarshaller.annotateSqlMarshallerEmptyAnnotation $
+    SqlMarshaller.marshallField id (FieldDefinition.booleanField "locked")
 
 tryLockExpr :: RawSql.RawSql
 tryLockExpr =
-  RawSql.fromString "SELECT pg_try_advisory_xact_lock("
+  RawSql.fromString "SELECT pg_try_advisory_xact_lock"
+    <> RawSql.leftParen
     <> RawSql.parameter (SqlValue.fromInt32 orvilleLockScope)
     <> RawSql.comma
     <> RawSql.parameter (SqlValue.fromInt32 migrationLockId)
-    <> RawSql.fromString ") as locked"
+    <> RawSql.rightParen
+    <> RawSql.fromString " as locked"
 
 waitForLockExpr :: RawSql.RawSql
 waitForLockExpr =
-  RawSql.fromString "SELECT pg_advisory_xact_lock("
+  RawSql.fromString "SELECT pg_advisory_xact_lock"
+    <> RawSql.leftParen
     <> RawSql.parameter (SqlValue.fromInt32 orvilleLockScope)
     <> RawSql.comma
     <> RawSql.parameter (SqlValue.fromInt32 migrationLockId)
+    <> RawSql.rightParen
 
 newtype MigrationLockError
   = MigrationLockError String

@@ -1,12 +1,12 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Orville.PostgreSQL.AutoMigration
   ( autoMigrateSchema,
     generateMigrationSteps,
     executeMigrationSteps,
-    SchemaItem,
-    schemaTable,
+    SchemaItem (..),
     schemaItemSummary,
     MigrationStep,
     MigrationDataError,
@@ -23,6 +23,8 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Set as Set
 import qualified Data.String as String
+import qualified Data.Text.Encoding as Enc
+import qualified Database.PostgreSQL.LibPQ as LibPQ
 
 import qualified Orville.PostgreSQL as Orville
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
@@ -37,12 +39,31 @@ import qualified Orville.PostgreSQL.PgCatalog as PgCatalog
   a list to be used with 'autoMigrateSchema'.
 -}
 data SchemaItem where
+  -- |
+  --    Constructs a 'SchemaItem' from a 'Orville.TableDefinition'.
   SchemaTable ::
     Orville.TableDefinition key writeEntity readEntity ->
     SchemaItem
+  -- |
+  --    Constructs a 'SchemaItem' that will drop the specified table if it is
+  --    found in the database.
+  SchemaDropTable ::
+    Orville.TableIdentifier ->
+    SchemaItem
+  -- |
+  --    Constructs a 'SchemaItem' from a 'Orville.SequenceDefinition'.
+  SchemaSequence ::
+    Orville.SequenceDefinition ->
+    SchemaItem
+  -- |
+  --    Constructs a 'SchemaItem' that will drop the specified table if it is
+  --    found in the database.
+  SchemaDropSequence ::
+    Orville.SequenceIdentifier ->
+    SchemaItem
 
 {- |
-  Retuns a one-line string describe the 'SchemaItem', suitable for a human to
+  Returns a one-line string describe the 'SchemaItem', suitable for a human to
   identify it in a list of output.
 
   For example, a 'SchemaItem' constructed via 'schemaTable' gives @Table <table
@@ -53,15 +74,12 @@ schemaItemSummary item =
   case item of
     SchemaTable tableDef ->
       "Table " <> Orville.tableIdToString (Orville.tableIdentifier tableDef)
-
-{- |
-  Constructs a 'SchemaItem' from a 'Orville.TableDefinition'.
--}
-schemaTable ::
-  Orville.TableDefinition key writeEntity readEntity ->
-  SchemaItem
-schemaTable =
-  SchemaTable
+    SchemaDropTable tableId ->
+      "Drop table " <> Orville.tableIdToString tableId
+    SchemaSequence sequenceDef ->
+      "Sequence " <> Orville.sequenceIdToString (Orville.sequenceIdentifier sequenceDef)
+    SchemaDropSequence sequenceId ->
+      "Drop sequence " <> Orville.sequenceIdToString sequenceId
 
 {- |
   A single SQL statement that will be executed in order to migrate the database
@@ -101,7 +119,9 @@ mkMigrationStepWithType stepType sql =
 data StepType
   = DropForeignKeys
   | DropUniqueConstraints
+  | DropIndexes
   | AddRemoveTablesAndColumns
+  | AddIndexes
   | AddUniqueConstraints
   | AddForeignKeys
   deriving (Eq, Ord)
@@ -112,6 +132,7 @@ data StepType
 -}
 data MigrationDataError
   = UnableToDiscoverCurrentSchema String
+  | PgCatalogInvariantViolated String
   deriving (Show)
 
 instance Exception MigrationDataError
@@ -149,11 +170,15 @@ generateMigrationStepsWithoutTransaction schemaItems = do
 
   dbDesc <- PgCatalog.describeDatabaseRelations pgCatalogRelations
 
-  pure
-    . map migrationStep
-    . List.sortOn migrationStepType
-    . concatMap (calculateMigrationSteps currentNamespace dbDesc)
-    $ schemaItems
+  case traverse (calculateMigrationSteps currentNamespace dbDesc) schemaItems of
+    Left err ->
+      liftIO . throwIO $ err
+    Right migrationSteps ->
+      pure
+        . map migrationStep
+        . List.sortOn migrationStepType
+        . concat
+        $ migrationSteps
 
 {- |
   A convenience function for executing a list of 'MigrationStep's that has
@@ -165,29 +190,75 @@ executeMigrationSteps =
 
 executeMigrationStepsWithoutTransaction :: Orville.MonadOrville m => [MigrationStep] -> m ()
 executeMigrationStepsWithoutTransaction =
-  traverse_ Orville.executeVoid
+  traverse_ (Orville.executeVoid Orville.DDLQuery)
 
 calculateMigrationSteps ::
   PgCatalog.NamespaceName ->
   PgCatalog.DatabaseDescription ->
   SchemaItem ->
-  [MigrationStepWithType]
+  Either MigrationDataError [MigrationStepWithType]
 calculateMigrationSteps currentNamespace dbDesc schemaItem =
   case schemaItem of
     SchemaTable tableDef ->
-      let schemaName =
-            tableDefinitionActualNamespaceName currentNamespace tableDef
-
-          tableName =
-            String.fromString
-              . Orville.tableIdUnqualifiedNameString
-              . Orville.tableIdentifier
-              $ tableDef
-       in case PgCatalog.lookupRelation (schemaName, tableName) dbDesc of
+      Right $
+        let (schemaName, tableName) =
+              tableIdToPgCatalogNames
+                currentNamespace
+                (Orville.tableIdentifier tableDef)
+         in case PgCatalog.lookupRelationOfKind PgCatalog.OrdinaryTable (schemaName, tableName) dbDesc of
+              Nothing ->
+                mkCreateTableSteps currentNamespace tableDef
+              Just relationDesc ->
+                mkAlterTableSteps currentNamespace relationDesc tableDef
+    SchemaDropTable tableId ->
+      Right $
+        let (schemaName, tableName) =
+              tableIdToPgCatalogNames currentNamespace tableId
+         in case PgCatalog.lookupRelation (schemaName, tableName) dbDesc of
+              Nothing ->
+                []
+              Just _ ->
+                let dropTableExpr =
+                      Expr.dropTableExpr
+                        Nothing
+                        (Orville.tableIdQualifiedName tableId)
+                 in [mkMigrationStepWithType AddRemoveTablesAndColumns dropTableExpr]
+    SchemaSequence sequenceDef ->
+      let (schemaName, sequenceName) =
+            sequenceIdToPgCatalogNames
+              currentNamespace
+              (Orville.sequenceIdentifier sequenceDef)
+       in case PgCatalog.lookupRelationOfKind PgCatalog.Sequence (schemaName, sequenceName) dbDesc of
             Nothing ->
-              mkCreateTableSteps currentNamespace tableDef
+              Right $
+                [ mkMigrationStepWithType
+                    AddRemoveTablesAndColumns
+                    (Orville.mkCreateSequenceExpr sequenceDef)
+                ]
             Just relationDesc ->
-              mkAlterTableSteps currentNamespace relationDesc tableDef
+              case PgCatalog.relationSequence relationDesc of
+                Nothing ->
+                  Left . PgCatalogInvariantViolated $
+                    "Sequence "
+                      <> PgCatalog.namespaceNameToString schemaName
+                      <> "."
+                      <> PgCatalog.relationNameToString sequenceName
+                      <> " was found in the 'pg_class' table but no corresponding 'pg_sequence' row was found"
+                Just pgSequence ->
+                  Right $
+                    mkAlterSequenceSteps sequenceDef pgSequence
+    SchemaDropSequence sequenceId ->
+      Right $
+        let (schemaName, sequenceName) =
+              sequenceIdToPgCatalogNames currentNamespace sequenceId
+         in case PgCatalog.lookupRelationOfKind PgCatalog.Sequence (schemaName, sequenceName) dbDesc of
+              Nothing ->
+                []
+              Just _ ->
+                [ mkMigrationStepWithType
+                    AddRemoveTablesAndColumns
+                    (Expr.dropSequenceExpr Nothing (Orville.sequenceIdQualifiedName sequenceId))
+                ]
 
 {- |
   Builds 'MigrationStep's that will perform table creation. This function
@@ -218,8 +289,14 @@ mkCreateTableSteps currentNamespace tableDef =
         concatMap
           (mkAddConstraintActions currentNamespace Set.empty)
           (Orville.tableConstraints tableDef)
+
+      addIndexSteps =
+        concatMap
+          (mkAddIndexSteps Set.empty tableName)
+          (Orville.tableIndexes tableDef)
    in mkMigrationStepWithType AddRemoveTablesAndColumns createTableExpr :
       mkConstraintSteps tableName addConstraintActions
+        <> addIndexSteps
 
 {- |
   Builds migration steps that are required to create or alter the table's
@@ -238,7 +315,7 @@ mkAlterTableSteps currentNamespace relationDesc tableDef =
   let addAlterColumnActions =
         concat $
           Orville.foldMarshallerFields
-            (Orville.tableMarshaller tableDef)
+            (Orville.unannotatedSqlMarshaller $ Orville.tableMarshaller tableDef)
             []
             (Orville.collectFromField Orville.IncludeReadOnlyColumns (mkAddAlterColumnActions relationDesc))
 
@@ -269,10 +346,45 @@ mkAlterTableSteps currentNamespace relationDesc tableDef =
           (mkDropConstraintActions constraintsToKeep)
           (PgCatalog.relationConstraints relationDesc)
 
+      systemIndexOids =
+        Set.fromList
+          . Maybe.mapMaybe (pgConstraintImpliedIndexOid . PgCatalog.constraintRecord)
+          . PgCatalog.relationConstraints
+          $ relationDesc
+
+      isSystemIndex indexDesc =
+        Set.member
+          (PgCatalog.pgIndexPgClassOid $ PgCatalog.indexRecord indexDesc)
+          systemIndexOids
+
+      existingIndexes =
+        Set.fromList
+          . concatMap pgIndexMigrationKeys
+          . filter (not . isSystemIndex)
+          . PgCatalog.relationIndexes
+          $ relationDesc
+
+      indexesToKeep =
+        Map.keysSet
+          . Orville.tableIndexes
+          $ tableDef
+
+      addIndexSteps =
+        concatMap
+          (mkAddIndexSteps existingIndexes tableName)
+          (Orville.tableIndexes tableDef)
+
+      dropIndexSteps =
+        concatMap
+          (mkDropIndexSteps indexesToKeep systemIndexOids)
+          (PgCatalog.relationIndexes relationDesc)
+
       tableName =
         Orville.tableName tableDef
    in mkAlterColumnSteps tableName (addAlterColumnActions <> dropColumnActions)
         <> mkConstraintSteps tableName (addConstraintActions <> dropConstraintActions)
+        <> addIndexSteps
+        <> dropIndexSteps
 
 {- |
   Consolidates alter table actions (which should all be related to adding and
@@ -281,7 +393,7 @@ mkAlterTableSteps currentNamespace relationDesc tableDef =
   statement.
 -}
 mkConstraintSteps ::
-  Expr.QualifiedTableName ->
+  Expr.Qualified Expr.TableName ->
   [(StepType, Expr.AlterTableAction)] ->
   [MigrationStepWithType]
 mkConstraintSteps tableName actions =
@@ -303,7 +415,7 @@ mkConstraintSteps tableName actions =
   step to perform them. Otherwise returns an empty list.
 -}
 mkAlterColumnSteps ::
-  Expr.QualifiedTableName ->
+  Expr.Qualified Expr.TableName ->
   [Expr.AlterTableAction] ->
   [MigrationStepWithType]
 mkAlterColumnSteps tableName actionExprs =
@@ -346,17 +458,54 @@ mkAddAlterColumnActions relationDesc fieldDef =
                   [Expr.alterColumnType columnName dataType (Just $ Expr.usingCast columnName dataType)]
 
                 nullabilityIsChanged =
-                  Orville.fieldIsNotNull fieldDef /= PgCatalog.pgAttributeIsNotNull attr
+                  Orville.fieldIsNotNullable fieldDef /= PgCatalog.pgAttributeIsNotNull attr
 
                 nullabilityAction =
-                  if Orville.fieldIsNotNull fieldDef
+                  if Orville.fieldIsNotNullable fieldDef
                     then Expr.setNotNull
                     else Expr.dropNotNull
 
                 alterNullability = do
                   guard nullabilityIsChanged
                   [Expr.alterColumnNullability (Orville.fieldColumnName fieldDef) nullabilityAction]
-             in alterType <> alterNullability
+
+                maybeExistingDefault =
+                  PgCatalog.lookupAttributeDefault attr relationDesc
+
+                maybeDefaultExpr =
+                  Orville.defaultValueExpression
+                    <$> Orville.fieldDefaultValue fieldDef
+
+                (dropDefault, setDefault) =
+                  case (maybeExistingDefault, maybeDefaultExpr) of
+                    (Nothing, Nothing) ->
+                      (Nothing, Nothing)
+                    (Just _, Nothing) ->
+                      if Orville.sqlTypeDontDropImplicitDefaultDuringMigrate sqlType
+                        then (Nothing, Nothing)
+                        else
+                          ( Just (Expr.alterColumnDropDefault columnName)
+                          , Nothing
+                          )
+                    (Nothing, Just newDefault) ->
+                      ( Nothing
+                      , Just (Expr.alterColumnSetDefault columnName newDefault)
+                      )
+                    (Just oldDefault, Just newDefault) ->
+                      let oldDefaultExprBytes =
+                            Enc.encodeUtf8
+                              . PgCatalog.pgAttributeDefaultExpression
+                              $ oldDefault
+
+                          newDefaultExprBytes =
+                            RawSql.toExampleBytes newDefault
+                       in if oldDefaultExprBytes == newDefaultExprBytes
+                            then (Nothing, Nothing)
+                            else
+                              ( Just (Expr.alterColumnDropDefault columnName)
+                              , Just (Expr.alterColumnSetDefault columnName newDefault)
+                              )
+             in Maybe.maybeToList dropDefault <> alterType <> Maybe.maybeToList setDefault <> alterNullability
         _ ->
           -- Either the column doesn't exist in the table _OR_ it's a system
           -- column. If it's a system column, attempting to add it will result
@@ -473,7 +622,7 @@ mkDropConstraintActions constraintsToKeep constraint =
   important to set the schema names for the constraints found in the table
   definition before comparing them. See 'setDefaultSchemaNameOnConstraintKey'.
 
-  If the descriptionis for a kind of constraint that Orville does not support,
+  If the description is for a kind of constraint that Orville does not support,
   'Nothing' is returned.
 -}
 pgConstraintMigrationKey ::
@@ -522,7 +671,129 @@ pgConstraintMigrationKey constraintDesc =
                 fmap
                   pgAttributeNamesToFieldNames
                   (PgCatalog.constraintForeignKey constraintDesc)
+            , Orville.constraintKeyForeignKeyOnUpdateAction =
+                PgCatalog.pgConstraintForeignKeyOnUpdateType $ PgCatalog.constraintRecord constraintDesc
+            , Orville.constraintKeyForeignKeyOnDeleteAction =
+                PgCatalog.pgConstraintForeignKeyOnDeleteType $ PgCatalog.constraintRecord constraintDesc
             }
+
+{- |
+  Builds migration steps to create an index if it does not exist.
+-}
+mkAddIndexSteps ::
+  Set.Set Orville.IndexMigrationKey ->
+  Expr.Qualified Expr.TableName ->
+  Orville.IndexDefinition ->
+  [MigrationStepWithType]
+mkAddIndexSteps existingIndexes tableName indexDef =
+  let indexKey =
+        Orville.indexMigrationKey indexDef
+   in if Set.member indexKey existingIndexes
+        then []
+        else [mkMigrationStepWithType AddIndexes (Orville.indexCreateExpr indexDef tableName)]
+
+{- |
+  Builds migration steps to drop an index if it should not exist.
+-}
+mkDropIndexSteps ::
+  Set.Set Orville.IndexMigrationKey ->
+  Set.Set LibPQ.Oid ->
+  PgCatalog.IndexDescription ->
+  [MigrationStepWithType]
+mkDropIndexSteps indexesToKeep systemIndexOids indexDesc =
+  case pgIndexMigrationKeys indexDesc of
+    [] ->
+      []
+    indexKeys ->
+      let pgClass =
+            PgCatalog.indexPgClass indexDesc
+
+          indexName =
+            Expr.indexName
+              . PgCatalog.relationNameToString
+              . PgCatalog.pgClassRelationName
+              $ pgClass
+
+          indexOid =
+            PgCatalog.pgClassOid pgClass
+       in if any (flip Set.member indexesToKeep) indexKeys
+            || Set.member indexOid systemIndexOids
+            then []
+            else [mkMigrationStepWithType DropIndexes (Expr.dropIndexExpr indexName)]
+
+{- |
+  Primary Key, Unique, and Exclusion constraints automatically create indexes
+  that we don't want orville to consider for the purposes of migrations. This
+  function checks the constraint type and returns the OID of the supporting
+  index if the constraint is one of these types.
+
+  Foreign key constraints also have a supporting index OID in @pg_catalog@, but
+  this index is not automatically created due to the constraint, so we don't
+  return the index's OID for that case.
+-}
+pgConstraintImpliedIndexOid :: PgCatalog.PgConstraint -> Maybe LibPQ.Oid
+pgConstraintImpliedIndexOid pgConstraint =
+  case PgCatalog.pgConstraintType pgConstraint of
+    PgCatalog.PrimaryKeyConstraint ->
+      Just $ PgCatalog.pgConstraintIndexOid pgConstraint
+    PgCatalog.UniqueConstraint ->
+      Just $ PgCatalog.pgConstraintIndexOid pgConstraint
+    PgCatalog.ExclusionConstraint ->
+      Just $ PgCatalog.pgConstraintIndexOid pgConstraint
+    PgCatalog.CheckConstraint ->
+      Nothing
+    PgCatalog.ForeignKeyConstraint ->
+      Nothing
+    PgCatalog.ConstraintTrigger ->
+      Nothing
+
+{- |
+  Builds the orville migration keys given a description of an existing index
+  so that it can be compared with indexs found in a table definition.
+
+  If the description includes expressions as members of the index rather than
+  simple attributes, 'Nothing' is returned.
+-}
+pgIndexMigrationKeys ::
+  PgCatalog.IndexDescription ->
+  [Orville.IndexMigrationKey]
+pgIndexMigrationKeys indexDesc =
+  let mkNamedIndexKey =
+        Orville.NamedIndexKey
+          . PgCatalog.relationNameToString
+          . PgCatalog.pgClassRelationName
+          . PgCatalog.indexPgClass
+          $ indexDesc
+      mkAttributeBasedIndexKey =
+        case pgAttributeBasedIndexMigrationKey indexDesc of
+          Just standardKey ->
+            [Orville.AttributeBasedIndexKey standardKey]
+          Nothing ->
+            []
+   in [mkNamedIndexKey] ++ mkAttributeBasedIndexKey
+
+pgAttributeBasedIndexMigrationKey ::
+  PgCatalog.IndexDescription ->
+  Maybe Orville.AttributeBasedIndexMigrationKey
+pgAttributeBasedIndexMigrationKey indexDesc = do
+  let indexMemberToFieldName member =
+        case member of
+          PgCatalog.IndexAttribute attr ->
+            Just (Orville.stringToFieldName . PgCatalog.attributeNameToString . PgCatalog.pgAttributeName $ attr)
+          PgCatalog.IndexExpression ->
+            Nothing
+
+      uniqueness =
+        if PgCatalog.pgIndexIsUnique (PgCatalog.indexRecord indexDesc)
+          then Orville.UniqueIndex
+          else Orville.NonUniqueIndex
+
+  fieldNames <- traverse indexMemberToFieldName (PgCatalog.indexMembers indexDesc)
+  pure $
+    Orville.AttributeBasedIndexMigrationKey
+      { Orville.indexKeyUniqueness = uniqueness
+      , Orville.indexKeyColumns = fieldNames
+      }
 
 schemaItemPgCatalogRelation ::
   PgCatalog.NamespaceName ->
@@ -531,18 +802,95 @@ schemaItemPgCatalogRelation ::
 schemaItemPgCatalogRelation currentNamespace item =
   case item of
     SchemaTable tableDef ->
-      ( tableDefinitionActualNamespaceName currentNamespace tableDef
-      , String.fromString . Orville.tableIdUnqualifiedNameString . Orville.tableIdentifier $ tableDef
-      )
+      tableIdToPgCatalogNames currentNamespace (Orville.tableIdentifier tableDef)
+    SchemaDropTable tableId ->
+      tableIdToPgCatalogNames currentNamespace tableId
+    SchemaSequence sequenceDef ->
+      sequenceIdToPgCatalogNames currentNamespace (Orville.sequenceIdentifier sequenceDef)
+    SchemaDropSequence sequenceId ->
+      sequenceIdToPgCatalogNames currentNamespace sequenceId
 
-tableDefinitionActualNamespaceName ::
+tableIdToPgCatalogNames ::
   PgCatalog.NamespaceName ->
-  Orville.TableDefinition key writeEntity readEntity ->
-  PgCatalog.NamespaceName
-tableDefinitionActualNamespaceName currentNamespace =
-  maybe currentNamespace String.fromString
-    . Orville.tableIdSchemaNameString
-    . Orville.tableIdentifier
+  Orville.TableIdentifier ->
+  (PgCatalog.NamespaceName, PgCatalog.RelationName)
+tableIdToPgCatalogNames currentNamespace tableId =
+  let actualNamespace =
+        maybe currentNamespace String.fromString
+          . Orville.tableIdSchemaNameString
+          $ tableId
+
+      relationName =
+        String.fromString
+          . Orville.tableIdUnqualifiedNameString
+          $ tableId
+   in (actualNamespace, relationName)
+
+mkAlterSequenceSteps ::
+  Orville.SequenceDefinition ->
+  PgCatalog.PgSequence ->
+  [MigrationStepWithType]
+mkAlterSequenceSteps sequenceDef pgSequence =
+  let ifChanged ::
+        Eq a =>
+        (a -> expr) ->
+        (PgCatalog.PgSequence -> a) ->
+        (Orville.SequenceDefinition -> a) ->
+        Maybe expr
+      ifChanged mkChange getOld getNew =
+        if getOld pgSequence == getNew sequenceDef
+          then Nothing
+          else Just . mkChange . getNew $ sequenceDef
+
+      mbIncrementByExpr =
+        ifChanged Expr.incrementBy PgCatalog.pgSequenceIncrement Orville.sequenceIncrement
+
+      mbMinValueExpr =
+        ifChanged Expr.minValue PgCatalog.pgSequenceMin Orville.sequenceMinValue
+
+      mbMaxValueExpr =
+        ifChanged Expr.maxValue PgCatalog.pgSequenceMax Orville.sequenceMaxValue
+
+      mbStartWithExpr =
+        ifChanged Expr.startWith PgCatalog.pgSequenceStart Orville.sequenceStart
+
+      mbCacheExpr =
+        ifChanged Expr.cache PgCatalog.pgSequenceCache Orville.sequenceCache
+
+      mbCycleExpr =
+        ifChanged Expr.cycleIfTrue PgCatalog.pgSequenceCycle Orville.sequenceCycle
+
+      applyChange :: (Bool, Maybe a -> b) -> Maybe a -> (Bool, b)
+      applyChange (changed, exprF) mbArg =
+        (changed || Maybe.isJust mbArg, exprF mbArg)
+
+      (anyChanges, migrateSequenceExpr) =
+        (False, Expr.alterSequenceExpr (Orville.sequenceName sequenceDef))
+          `applyChange` mbIncrementByExpr
+          `applyChange` mbMinValueExpr
+          `applyChange` mbMaxValueExpr
+          `applyChange` mbStartWithExpr
+          `applyChange` mbCacheExpr
+          `applyChange` mbCycleExpr
+   in if anyChanges
+        then [mkMigrationStepWithType AddRemoveTablesAndColumns migrateSequenceExpr]
+        else []
+
+sequenceIdToPgCatalogNames ::
+  PgCatalog.NamespaceName ->
+  Orville.SequenceIdentifier ->
+  (PgCatalog.NamespaceName, PgCatalog.RelationName)
+sequenceIdToPgCatalogNames currentNamespace sequenceId =
+  let actualNamespace =
+        maybe currentNamespace String.fromString
+          . Orville.sequenceIdSchemaNameString
+          $ sequenceId
+
+      relationName =
+        String.fromString
+          . Orville.sequenceIdUnqualifiedNameString
+          $ sequenceId
+   in (actualNamespace, relationName)
 
 currentNamespaceQuery :: Expr.QueryExpr
 currentNamespaceQuery =
@@ -553,7 +901,7 @@ currentNamespaceQuery =
             -- current_schema is a special reserved word in postgresql. If you
             -- put it in quotes it tries to treat it as a regular column name,
             -- which then can't be found as a column in the query.
-            (Expr.columnNameFromIdentifier (Expr.unquotedIdentifier "current_schema"))
+            (RawSql.unsafeFromRawSql $ RawSql.fromString "current_schema")
             (Orville.fieldColumnName PgCatalog.namespaceNameField)
         ]
     )
@@ -563,8 +911,9 @@ findCurrentNamespace :: Orville.MonadOrville m => m PgCatalog.NamespaceName
 findCurrentNamespace = do
   results <-
     Orville.executeAndDecode
+      Orville.SelectQuery
       currentNamespaceQuery
-      (Orville.marshallField id PgCatalog.namespaceNameField)
+      (Orville.annotateSqlMarshallerEmptyAnnotation $ Orville.marshallField id PgCatalog.namespaceNameField)
 
   liftIO $
     case results of

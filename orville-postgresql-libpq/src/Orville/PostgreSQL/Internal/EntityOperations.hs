@@ -1,3 +1,8 @@
+{- |
+Module    : Orville.PostgreSQL.Internal.EntityOperations
+Copyright : Flipstone Technology Partners 2021
+License   : MIT
+-}
 module Orville.PostgreSQL.Internal.EntityOperations
   ( insertEntity,
     insertAndReturnEntity,
@@ -5,8 +10,12 @@ module Orville.PostgreSQL.Internal.EntityOperations
     insertAndReturnEntities,
     updateEntity,
     updateAndReturnEntity,
+    updateFields,
+    updateFieldsAndReturnEntities,
     deleteEntity,
     deleteAndReturnEntity,
+    deleteEntities,
+    deleteAndReturnEntities,
     findEntitiesBy,
     findFirstEntityBy,
     findEntity,
@@ -18,21 +27,27 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe (listToMaybe)
 
-import qualified Orville.PostgreSQL.Internal.Execute as Execute
+import qualified Orville.PostgreSQL.Internal.Delete as Delete
+import qualified Orville.PostgreSQL.Internal.Expr as Expr
+import qualified Orville.PostgreSQL.Internal.Insert as Insert
 import qualified Orville.PostgreSQL.Internal.MonadOrville as MonadOrville
 import qualified Orville.PostgreSQL.Internal.PrimaryKey as PrimaryKey
+import qualified Orville.PostgreSQL.Internal.RowCountExpectation as RowCountExpectation
 import qualified Orville.PostgreSQL.Internal.Select as Select
 import qualified Orville.PostgreSQL.Internal.SelectOptions as SelectOptions
 import qualified Orville.PostgreSQL.Internal.TableDefinition as TableDef
+import qualified Orville.PostgreSQL.Internal.TableIdentifier as TableId
+import qualified Orville.PostgreSQL.Internal.Update as Update
 
 {- |
-  Inserts a entity into the specified table.
+  Inserts a entity into the specified table. Returns the number of rows
+  affected by the query.
 -}
 insertEntity ::
   MonadOrville.MonadOrville m =>
   TableDef.TableDefinition key writeEntity readEntity ->
   writeEntity ->
-  m ()
+  m Int
 insertEntity entityTable entity =
   insertEntities entityTable (entity :| [])
 
@@ -51,28 +66,24 @@ insertAndReturnEntity ::
 insertAndReturnEntity entityTable entity = do
   returnedEntities <- insertAndReturnEntities entityTable (entity :| [])
 
-  case returnedEntities of
-    [returnedEntity] ->
-      pure returnedEntity
-    _ ->
-      liftIO . throwIO . RowCountExpectationError $
-        "Expected exactly one row to be returned in RETURNING clause, but got " <> show (length returnedEntities)
+  RowCountExpectation.expectExactlyOneRow
+    "insertAndReturnEntity RETURNING clause"
+    returnedEntities
 
 {- |
-  Inserts a set of entities into the specified table
+  Inserts a non-empty list of entities into the specified table. Returns the
+  number of rows affected by the query.
 -}
 insertEntities ::
   MonadOrville.MonadOrville m =>
   TableDef.TableDefinition key writeEntity readEntity ->
   NonEmpty writeEntity ->
-  m ()
-insertEntities entityTable entities =
-  let insertExpr =
-        TableDef.mkInsertExpr TableDef.WithoutReturning entityTable entities
-   in Execute.executeVoid insertExpr
+  m Int
+insertEntities tableDef =
+  Insert.executeInsert . Insert.insertToTable tableDef
 
 {- |
-  Inserts a list of entities into the specified table, returning the data that
+  Inserts a non-empty list of entities into the specified table, returning the data that
   was inserted into the database.
 
   You can use this function to obtain any column values filled in by the
@@ -83,25 +94,25 @@ insertAndReturnEntities ::
   TableDef.TableDefinition key writeEntity readEntity ->
   NonEmpty writeEntity ->
   m [readEntity]
-insertAndReturnEntities entityTable entities =
-  let insertExpr =
-        TableDef.mkInsertExpr TableDef.WithReturning entityTable entities
-   in Execute.executeAndDecode
-        insertExpr
-        (TableDef.tableMarshaller entityTable)
+insertAndReturnEntities tableDef =
+  Insert.executeInsertReturnEntities . Insert.insertToTableReturning tableDef
 
 {- |
-  Updates the row with the given key in with the data given by 'writeEntity'
+  Updates the row with the given key in with the data given by 'writeEntity'.
+  Returns the number of rows affected by the query.
 -}
 updateEntity ::
   MonadOrville.MonadOrville m =>
   TableDef.TableDefinition (TableDef.HasKey key) writeEntity readEntity ->
   key ->
   writeEntity ->
-  m ()
+  m Int
 updateEntity tableDef key writeEntity =
-  Execute.executeVoid $
-    TableDef.mkUpdateExpr TableDef.WithoutReturning tableDef key writeEntity
+  case Update.updateToTable tableDef key writeEntity of
+    Nothing ->
+      liftIO . throwIO . EmptyUpdateError . TableDef.tableIdentifier $ tableDef
+    Just update ->
+      Update.executeUpdate update
 
 {- |
   Updates the row with the given key in with the data given by 'writeEntity',
@@ -118,22 +129,61 @@ updateAndReturnEntity ::
   writeEntity ->
   m (Maybe readEntity)
 updateAndReturnEntity tableDef key writeEntity =
-  fmap listToMaybe $
-    Execute.executeAndDecode
-      (TableDef.mkUpdateExpr TableDef.WithReturning tableDef key writeEntity)
-      (TableDef.tableMarshaller tableDef)
+  case Update.updateToTableReturning tableDef key writeEntity of
+    Nothing ->
+      liftIO . throwIO . EmptyUpdateError . TableDef.tableIdentifier $ tableDef
+    Just update -> do
+      returnedEntities <- Update.executeUpdateReturnEntities update
+      RowCountExpectation.expectAtMostOneRow
+        "updateAndReturnEntity RETURNING clause"
+        returnedEntities
 
 {- |
-  Deletes the row with the given key
+  Applies the given 'Expr.SetClause's to the rows in the table that match the
+  given where condition. The easiest way to construct a 'Expr.SetClause' is
+  via the 'Orville.Postgresql.setField' function (also exported as @.:=@).
+  Returns the number of rows affected by the query.
+-}
+updateFields ::
+  MonadOrville.MonadOrville m =>
+  TableDef.TableDefinition (TableDef.HasKey key) writeEntity readEntity ->
+  NonEmpty Expr.SetClause ->
+  Maybe SelectOptions.WhereCondition ->
+  m Int
+updateFields tableDef setClauses mbWhereCondition =
+  Update.executeUpdate $
+    Update.updateToTableFields tableDef setClauses mbWhereCondition
+
+{- |
+  Like 'updateFields', but uses a @RETURNING@ clause to return the updated
+  version of any rows that were affected by the update.
+-}
+updateFieldsAndReturnEntities ::
+  MonadOrville.MonadOrville m =>
+  TableDef.TableDefinition (TableDef.HasKey key) writeEntity readEntity ->
+  NonEmpty Expr.SetClause ->
+  Maybe SelectOptions.WhereCondition ->
+  m [readEntity]
+updateFieldsAndReturnEntities tableDef setClauses mbWhereCondition =
+  Update.executeUpdateReturnEntities $
+    Update.updateToTableFieldsReturning tableDef setClauses mbWhereCondition
+
+{- |
+  Deletes the row with the given key. Returns the number of rows affected
+  by the query.
 -}
 deleteEntity ::
   MonadOrville.MonadOrville m =>
   TableDef.TableDefinition (TableDef.HasKey key) writeEntity readEntity ->
   key ->
-  m ()
-deleteEntity tableDef key =
-  Execute.executeVoid $
-    TableDef.mkDeleteExpr TableDef.WithoutReturning tableDef key
+  m Int
+deleteEntity entityTable key =
+  let primaryKeyCondition =
+        PrimaryKey.primaryKeyEquals
+          (TableDef.tablePrimaryKey entityTable)
+          key
+   in Delete.executeDelete $
+        Delete.deleteFromTable entityTable (Just primaryKeyCondition)
 
 {- |
   Deletes the row with the given key, returning the row that was deleted.
@@ -144,11 +194,43 @@ deleteAndReturnEntity ::
   TableDef.TableDefinition (TableDef.HasKey key) writeEntity readEntity ->
   key ->
   m (Maybe readEntity)
-deleteAndReturnEntity tableDef key =
-  fmap listToMaybe $
-    Execute.executeAndDecode
-      (TableDef.mkDeleteExpr TableDef.WithReturning tableDef key)
-      (TableDef.tableMarshaller tableDef)
+deleteAndReturnEntity entityTable key = do
+  let primaryKeyCondition =
+        PrimaryKey.primaryKeyEquals
+          (TableDef.tablePrimaryKey entityTable)
+          key
+
+  returnedEntities <- deleteAndReturnEntities entityTable (Just primaryKeyCondition)
+
+  RowCountExpectation.expectAtMostOneRow
+    "deleteAndReturnEntity RETURNING clause"
+    returnedEntities
+
+{- |
+  Deletes all rows in the given table that match the where condition. Returns
+  the number of rows affected by the query.
+-}
+deleteEntities ::
+  MonadOrville.MonadOrville m =>
+  TableDef.TableDefinition key writeEntity readEntity ->
+  Maybe SelectOptions.WhereCondition ->
+  m Int
+deleteEntities entityTable whereCondition =
+  Delete.executeDelete $
+    Delete.deleteFromTable entityTable whereCondition
+
+{- |
+  Deletes all rows in the given table that match the where condition, returning
+  the rows that were deleted.
+-}
+deleteAndReturnEntities ::
+  MonadOrville.MonadOrville m =>
+  TableDef.TableDefinition key writeEntity readEntity ->
+  Maybe SelectOptions.WhereCondition ->
+  m [readEntity]
+deleteAndReturnEntities entityTable whereCondition =
+  Delete.executeDeleteReturnEntities $
+    Delete.deleteFromTableReturning entityTable whereCondition
 
 {- |
   Finds all the entities in the given table according to the specified
@@ -195,12 +277,16 @@ findEntity entityTable key =
    in findFirstEntityBy entityTable (SelectOptions.where_ primaryKeyCondition)
 
 {- |
-  INTERNAL: This should really never get thrown in the real world. It would be
-  thrown if the returning clause from an insert statement for a single record
-  returned 0 records or more than 1 record.
+  Thrown by 'updateFields' and 'updateFieldsAndReturnEntities' if the
+  'TableDef.TableDefinition' they are given has no columns to update.
 -}
-newtype RowCountExpectationError
-  = RowCountExpectationError String
-  deriving (Show)
+newtype EmptyUpdateError
+  = EmptyUpdateError TableId.TableIdentifier
 
-instance Exception RowCountExpectationError
+instance Show EmptyUpdateError where
+  show (EmptyUpdateError tableId) =
+    "EmptyUdateError: "
+      <> TableId.tableIdToString tableId
+      <> " has no columns to update."
+
+instance Exception EmptyUpdateError

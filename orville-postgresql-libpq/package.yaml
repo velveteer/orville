@@ -8,7 +8,7 @@ author: Flipstone Technology Partners
 maintainer: development@flipstone.com
 license: MIT
 git: git@github.com:flipstone/orville.git
-tested-with: GHC == 8.8.4, GHC == 8.10.3, GHC == 8.10.4, GHC == 8.10.6, GHC == 8.10.7, GHC == 9.0.1
+tested-with: GHC == 8.8.4, GHC == 8.10.3, GHC == 8.10.4, GHC == 8.10.6, GHC == 8.10.7, GHC == 9.0.2, GHC == 9.2.4
 extra-source-files:
   - README.md
 
@@ -24,18 +24,33 @@ library:
     - Orville.PostgreSQL
     - Orville.PostgreSQL.AutoMigration
     - Orville.PostgreSQL.Connection
+    - Orville.PostgreSQL.EntityTrace
+    - Orville.PostgreSQL.Internal.Cursor
+    - Orville.PostgreSQL.Internal.DefaultValue
+    - Orville.PostgreSQL.Internal.Delete
+    - Orville.PostgreSQL.Internal.ErrorDetailLevel
     - Orville.PostgreSQL.Internal.ExecutionResult
     - Orville.PostgreSQL.Internal.Expr
     - Orville.PostgreSQL.Internal.FieldDefinition
-    - Orville.PostgreSQL.Internal.PGTextFormatValue
+    - Orville.PostgreSQL.Internal.Insert
+    - Orville.PostgreSQL.Internal.MarshallError
+    - Orville.PostgreSQL.Internal.OrvilleState
+    - Orville.PostgreSQL.Internal.PgTextFormatValue
     - Orville.PostgreSQL.Internal.PrimaryKey
     - Orville.PostgreSQL.Internal.RawSql
+    - Orville.PostgreSQL.Internal.ReturningOption
     - Orville.PostgreSQL.Internal.Select
     - Orville.PostgreSQL.Internal.SelectOptions
+    - Orville.PostgreSQL.Internal.SequenceDefinition
+    - Orville.PostgreSQL.Internal.SequenceIdentifier
+    - Orville.PostgreSQL.Internal.SqlCommenter
     - Orville.PostgreSQL.Internal.SqlMarshaller
     - Orville.PostgreSQL.Internal.SqlType
     - Orville.PostgreSQL.Internal.SqlValue
     - Orville.PostgreSQL.Internal.TableDefinition
+    - Orville.PostgreSQL.Internal.TableIdentifier
+    - Orville.PostgreSQL.Internal.Transaction
+    - Orville.PostgreSQL.Internal.Update
     - Orville.PostgreSQL.Plan
     - Orville.PostgreSQL.Plan.Explanation
     - Orville.PostgreSQL.Plan.Many
@@ -75,11 +90,14 @@ library:
     - dlist >= 0.8 && < 1.1
     - postgresql-libpq >= 0.9.4.2 && <0.10
     - containers >= 0.6 && < 0.7
+    - network-uri >= 2.6 && < 2.7
+    - random >= 1.0 && <2
     - resource-pool
     - safe-exceptions >=0.1.7
     - text
     - time >=1.5
-    - transformers >= 0.5 && < 0.6
+    - transformers >= 0.5 && < 0.7
+    - uuid
 
 tests:
   spec:
@@ -96,6 +114,7 @@ tests:
       - safe-exceptions
       - text
       - time
+      - uuid
     ghc-options:
       - -j
       - -Wall

@@ -1,21 +1,24 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Orville.PostgreSQL.Internal.Select
   ( Select,
     executeSelect,
+    useSelect,
     selectToQueryExpr,
     selectTable,
     selectMarshalledColumns,
     selectSelectList,
-    selectQueryExpr,
+    rawSelectQueryExpr,
   )
 where
 
 import qualified Orville.PostgreSQL.Internal.Execute as Execute
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
 import qualified Orville.PostgreSQL.Internal.MonadOrville as MonadOrville
+import qualified Orville.PostgreSQL.Internal.QueryType as QueryType
 import qualified Orville.PostgreSQL.Internal.SelectOptions as SelectOptions
-import Orville.PostgreSQL.Internal.SqlMarshaller (ReadOnlyColumnOption (IncludeReadOnlyColumns), SqlMarshaller, marshallerColumnNames)
+import Orville.PostgreSQL.Internal.SqlMarshaller (AnnotatedSqlMarshaller, marshallerDerivedColumns, unannotatedSqlMarshaller)
 import Orville.PostgreSQL.Internal.TableDefinition (TableDefinition, tableMarshaller, tableName)
 
 {- |
@@ -24,7 +27,7 @@ import Orville.PostgreSQL.Internal.TableDefinition (TableDefinition, tableMarsha
   database result set when it is executed.
 -}
 data Select readEntity where
-  Select :: SqlMarshaller writeEntity readEntity -> Expr.QueryExpr -> Select readEntity
+  Select :: AnnotatedSqlMarshaller writeEntity readEntity -> Expr.QueryExpr -> Select readEntity
 
 {- |
   Extracts the query that will be run when the select is executed. Normally you
@@ -39,8 +42,24 @@ selectToQueryExpr (Select _ query) = query
   decode the result set.
 -}
 executeSelect :: MonadOrville.MonadOrville m => Select row -> m [row]
-executeSelect (Select marshaller query) =
-  Execute.executeAndDecode query marshaller
+executeSelect =
+  useSelect (Execute.executeAndDecode QueryType.SelectQuery)
+
+{- |
+  Runs a function allowing it to use the data elements containted within the
+  'Select' it pleases. The marshaller that the function is provided can be use
+  to decode results from the query.
+-}
+useSelect ::
+  ( forall writeEntity.
+    Expr.QueryExpr ->
+    AnnotatedSqlMarshaller writeEntity readEntity ->
+    a
+  ) ->
+  Select readEntity ->
+  a
+useSelect f (Select marshaller query) =
+  f query marshaller
 
 {- |
   Builds a 'Select' that will select all the columns described in the
@@ -65,13 +84,13 @@ selectTable tableDef =
   marshaller.
 -}
 selectMarshalledColumns ::
-  SqlMarshaller writeEntity readEntity ->
-  Expr.QualifiedTableName ->
+  AnnotatedSqlMarshaller writeEntity readEntity ->
+  Expr.Qualified Expr.TableName ->
   SelectOptions.SelectOptions ->
   Select readEntity
 selectMarshalledColumns marshaller =
   selectSelectList
-    (Expr.selectColumns (marshallerColumnNames IncludeReadOnlyColumns marshaller))
+    (Expr.selectDerivedColumns (marshallerDerivedColumns . unannotatedSqlMarshaller $ marshaller))
     marshaller
 
 {- |
@@ -90,12 +109,12 @@ selectMarshalledColumns marshaller =
 -}
 selectSelectList ::
   Expr.SelectList ->
-  SqlMarshaller writeEntity readEntity ->
-  Expr.QualifiedTableName ->
+  AnnotatedSqlMarshaller writeEntity readEntity ->
+  Expr.Qualified Expr.TableName ->
   SelectOptions.SelectOptions ->
   Select readEntity
 selectSelectList selectList marshaller qualifiedTableName selectOptions =
-  selectQueryExpr marshaller $
+  rawSelectQueryExpr marshaller $
     Expr.queryExpr
       (SelectOptions.selectDistinct selectOptions)
       selectList
@@ -119,8 +138,8 @@ selectSelectList selectList marshaller qualifiedTableName selectOptions =
   can build any query that Orville supports using the expression building
   functions, or use @RawSql.fromRawSql@ to build a raw 'Expr.QueryExpr'.
 -}
-selectQueryExpr ::
-  SqlMarshaller writeEntity readEntity ->
+rawSelectQueryExpr ::
+  AnnotatedSqlMarshaller writeEntity readEntity ->
   Expr.QueryExpr ->
   Select readEntity
-selectQueryExpr = Select
+rawSelectQueryExpr = Select

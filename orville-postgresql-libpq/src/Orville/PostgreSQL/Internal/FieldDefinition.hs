@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 {- |
 Module    : Orville.PostgreSQL.Internal.FieldDefinition
@@ -8,9 +9,14 @@ License   : MIT
 module Orville.PostgreSQL.Internal.FieldDefinition
   ( FieldDefinition,
     fieldName,
+    fieldDescription,
+    setFieldDescription,
     fieldType,
-    fieldIsNotNull,
+    fieldIsNotNullable,
+    fieldDefaultValue,
     fieldNullability,
+    setField,
+    (.:=),
     FieldNullability (..),
     fieldValueToSqlValue,
     fieldValueFromSqlValue,
@@ -21,12 +27,16 @@ module Orville.PostgreSQL.Internal.FieldDefinition
     fieldNameToString,
     fieldNameToColumnName,
     fieldNameToByteString,
+    byteStringToFieldName,
     NotNull,
     Nullable,
     convertField,
     coerceField,
     nullableField,
     asymmetricNullableField,
+    setDefaultValue,
+    removeDefaultValue,
+    prefixField,
     integerField,
     serialField,
     smallIntegerField,
@@ -41,6 +51,7 @@ module Orville.PostgreSQL.Internal.FieldDefinition
     dateField,
     utcTimestampField,
     localTimestampField,
+    uuidField,
     fieldOfType,
   )
 where
@@ -50,7 +61,9 @@ import qualified Data.Coerce as Coerce
 import Data.Int (Int16, Int32, Int64)
 import qualified Data.Text as T
 import qualified Data.Time as Time
+import qualified Data.UUID as UUID
 
+import Orville.PostgreSQL.Internal.DefaultValue (DefaultValue, coerceDefaultValue, defaultValueExpression)
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
 import qualified Orville.PostgreSQL.Internal.SqlType as SqlType
 import qualified Orville.PostgreSQL.Internal.SqlValue as SqlValue
@@ -61,7 +74,7 @@ newtype FieldName
 
 fieldNameToColumnName :: FieldName -> Expr.ColumnName
 fieldNameToColumnName (FieldName name) =
-  Expr.columnNameFromIdentifier (Expr.identifierFromBytes name)
+  Expr.fromIdentifier (Expr.identifierFromBytes name)
 
 stringToFieldName :: String -> FieldName
 stringToFieldName =
@@ -75,6 +88,9 @@ fieldNameToByteString :: FieldName -> B8.ByteString
 fieldNameToByteString (FieldName name) =
   name
 
+byteStringToFieldName :: B8.ByteString -> FieldName
+byteStringToFieldName = FieldName
+
 {- |
   'FieldDefinition' determines the SQL constsruction of a column in the
   database, comprising the name, SQL type and whether the field is nullable.
@@ -83,16 +99,35 @@ fieldNameToByteString (FieldName name) =
   the field.
 -}
 data FieldDefinition nullability a = FieldDefinition
-  { _fieldName :: FieldName
-  , _fieldType :: SqlType.SqlType a
-  , _fieldNullability :: NullabilityGADT nullability
+  { i_fieldName :: FieldName
+  , i_fieldType :: SqlType.SqlType a
+  , i_fieldNullability :: NullabilityGADT nullability
+  , i_fieldDefaultValue :: Maybe (DefaultValue a)
+  , i_fieldDescription :: Maybe String
   }
 
 {- |
   The name used in database queries to reference the field.
 -}
 fieldName :: FieldDefinition nullability a -> FieldName
-fieldName = _fieldName
+fieldName = i_fieldName
+
+{- |
+  Returns the description that was passed to 'setFieldDescription', if any.
+-}
+fieldDescription :: FieldDefinition nullability a -> Maybe String
+fieldDescription = i_fieldDescription
+
+{- |
+  Sets the description for the field. This description not currently used
+  anywhere by Orville itself, but users can retrieve the description via
+  'fieldDescription' for their own purposes (e.g. generating documentation).
+-}
+setFieldDescription :: String -> FieldDefinition nullability a -> FieldDefinition nullability a
+setFieldDescription description fieldDef =
+  fieldDef
+    { i_fieldDescription = Just description
+    }
 
 {- |
   The 'SqlType' for the 'FieldDefinition' determines the PostgreSQL data type
@@ -100,9 +135,16 @@ fieldName = _fieldName
   from the database.
 -}
 fieldType :: FieldDefinition nullability a -> SqlType.SqlType a
-fieldType = _fieldType
+fieldType = i_fieldType
 
-{- | A 'FieldNullability is returned by the 'fieldNullability' function, which
+{- |
+  Returns the default value definition for the field, if any has been set.
+-}
+fieldDefaultValue :: FieldDefinition nullability a -> Maybe (DefaultValue a)
+fieldDefaultValue = i_fieldDefaultValue
+
+{- |
+ A 'FieldNullability' is returned by the 'fieldNullability' function, which
  can be used when a function works on both 'Nullable' and 'NotNull' functions
  but needs to deal with each type of field separately. It adds wrapper
  constructors around the 'FieldDefinition' that you can pattern match on to
@@ -112,23 +154,24 @@ data FieldNullability a
   = NullableField (FieldDefinition Nullable a)
   | NotNullField (FieldDefinition NotNull a)
 
-{- | Resolves the 'nullablity' of a field to a concrete type, which is returned
+{- |
+ Resolves the 'nullablity' of a field to a concrete type, which is returned
  via the 'FieldNullability' type. You can pattern match on this type to then
  extract the either 'Nullable' or 'NotNull' not field for cases where you
  may require different logic based on the nullability of a field.
 -}
 fieldNullability :: FieldDefinition nullability a -> FieldNullability a
 fieldNullability field =
-  case _fieldNullability field of
+  case i_fieldNullability field of
     NullableGADT -> NullableField field
     NotNullGADT -> NotNullField field
 
 {- |
   Indicates whether a field is nullable.
 -}
-fieldIsNotNull :: FieldDefinition nullability a -> Bool
-fieldIsNotNull field =
-  case _fieldNullability field of
+fieldIsNotNullable :: FieldDefinition nullability a -> Bool
+fieldIsNotNullable field =
+  case i_fieldNullability field of
     NullableGADT -> False
     NotNullGADT -> True
 
@@ -142,9 +185,9 @@ fieldValueToSqlValue =
 
 {- |
   Marshalls a 'SqlValue' from the database into the Haskell value that represents it.
-  This may fail, in which case 'Nothing' is returned.
+  This may fail, in which case a 'Left' is returned with an error message.
 -}
-fieldValueFromSqlValue :: FieldDefinition nullability a -> SqlValue.SqlValue -> Maybe a
+fieldValueFromSqlValue :: FieldDefinition nullability a -> SqlValue.SqlValue -> Either String a
 fieldValueFromSqlValue =
   SqlType.sqlTypeFromSql . fieldType
 
@@ -166,6 +209,7 @@ fieldColumnDefinition fieldDef =
     (fieldColumnName fieldDef)
     (SqlType.sqlTypeExpr $ fieldType fieldDef)
     (Just $ fieldColumnConstraint fieldDef)
+    (fmap (Expr.columnDefault . defaultValueExpression) $ i_fieldDefaultValue fieldDef)
 
 {- |
   INTERNAL - Builds the appropriate ColumnConstraint for a field. Currently
@@ -361,6 +405,16 @@ localTimestampField ::
 localTimestampField = fieldOfType SqlType.timestampWithoutZone
 
 {- |
+  Builds a 'FieldDefinition' that stores Haskell 'UUID.UUID' values as the
+  PostgreSQL "UUID" type.
+-}
+uuidField ::
+  -- | Name of the field in the database
+  String ->
+  FieldDefinition NotNull UUID.UUID
+uuidField = fieldOfType SqlType.uuid
+
+{- |
   Builds a 'FieldDefinition' for will use the given 'SqlType' to determine
   the database representation of the field. If you have created a custom
   'SqlType', you can use this function to construct a helper like the
@@ -375,9 +429,12 @@ fieldOfType ::
   FieldDefinition NotNull a
 fieldOfType sqlType name =
   FieldDefinition
-    (stringToFieldName name)
-    sqlType
-    NotNullGADT
+    { i_fieldName = stringToFieldName name
+    , i_fieldType = sqlType
+    , i_fieldNullability = NotNullGADT
+    , i_fieldDefaultValue = Nothing
+    , i_fieldDescription = Nothing
+    }
 
 {- |
   Makes a 'NotNull' field 'Nullable' by wrapping the Haskell type of the field
@@ -394,13 +451,16 @@ nullableField field =
           , SqlType.sqlTypeFromSql =
               \sqlValue ->
                 if SqlValue.isSqlNull sqlValue
-                  then Just Nothing
+                  then Right Nothing
                   else Just <$> SqlType.sqlTypeFromSql sqlType sqlValue
           }
    in FieldDefinition
-        (fieldName field)
-        (nullableType $ fieldType field)
-        NullableGADT
+        { i_fieldName = fieldName field
+        , i_fieldType = nullableType (fieldType field)
+        , i_fieldNullability = NullableGADT
+        , i_fieldDefaultValue = fmap coerceDefaultValue (i_fieldDefaultValue field)
+        , i_fieldDescription = fieldDescription field
+        }
 
 {- |
   Adds a `Maybe` wrapper to a field that is already nullable. (If your field is
@@ -423,17 +483,20 @@ asymmetricNullableField field =
           , SqlType.sqlTypeFromSql = \sqlValue -> Just <$> SqlType.sqlTypeFromSql sqlType sqlValue
           }
    in FieldDefinition
-        (fieldName field)
-        (nullableType $ fieldType field)
-        NullableGADT
+        { i_fieldName = fieldName field
+        , i_fieldType = nullableType (fieldType field)
+        , i_fieldNullability = NullableGADT
+        , i_fieldDefaultValue = fmap coerceDefaultValue (i_fieldDefaultValue field)
+        , i_fieldDescription = fieldDescription field
+        }
 
 {- |
   Applies a 'SqlType.SqlType' conversion to a 'FieldDefinition'. You can
   use this function the create 'FieldDefinition's for based on the primitive
   ones provided, but with more specific Haskell types.
 
-  See 'SqlType.convertSqlType' and 'SqlType.maybeConvertSqlType' for functions
-  to create the conversion needed as the firts argument to 'convertField'.
+  See 'SqlType.convertSqlType' and 'SqlType.tryConvertSqlType' for functions
+  to create the conversion needed as the first argument to 'convertField'.
 -}
 convertField ::
   (SqlType.SqlType a -> SqlType.SqlType b) ->
@@ -441,13 +504,14 @@ convertField ::
   FieldDefinition nullability b
 convertField conversion fieldDef =
   fieldDef
-    { _fieldType = conversion (_fieldType fieldDef)
+    { i_fieldType = conversion (i_fieldType fieldDef)
+    , i_fieldDefaultValue = fmap coerceDefaultValue (i_fieldDefaultValue fieldDef)
     }
 
 {- |
-  A specicialization of 'convertField' that can be used with types that
-  implement 'Coere.Coercible'. This is particularly useful for newtype wrappers
-  around primitive types.
+  A specialization of 'convertField' that can be used with types that implement
+  'Coere.Coercible'. This is particularly useful for newtype wrappers around
+  primitive types.
 -}
 coerceField ::
   (Coerce.Coercible a b, Coerce.Coercible b a) =>
@@ -456,3 +520,60 @@ coerceField ::
 coerceField =
   convertField
     (SqlType.convertSqlType Coerce.coerce Coerce.coerce)
+
+{- |
+  Sets a default value for the field. The default value will be added as part
+  of the column definition in the database. Because the default value is
+  ultimately provided by the database this can be used to add a not-null column
+  to safely to an existing table as long as a reasonable default value is
+  available to use.
+-}
+setDefaultValue ::
+  DefaultValue a ->
+  FieldDefinition nullability a ->
+  FieldDefinition nullability a
+setDefaultValue defaultValue fieldDef =
+  fieldDef
+    { i_fieldDefaultValue = Just defaultValue
+    }
+
+{- |
+  Removes any default value that may have been set on a field via
+  @setDefaultValue@.
+-}
+removeDefaultValue ::
+  FieldDefinition nullability a ->
+  FieldDefinition nullability a
+removeDefaultValue fieldDef =
+  fieldDef
+    { i_fieldDefaultValue = Nothing
+    }
+
+{- |
+  Adds a prefix, followed by an underscore, to a field's name.
+-}
+prefixField ::
+  String ->
+  FieldDefinition nullability a ->
+  FieldDefinition nullability a
+prefixField prefix fieldDef =
+  fieldDef
+    { i_fieldName = FieldName (B8.pack prefix <> "_" <> fieldNameToByteString (fieldName fieldDef))
+    }
+
+{- |
+  Constructs a 'Expr.SetClause' that will set the column named in the
+  field definition to the given value. The value is be converted to SQL
+  value using 'fieldValueToSqlValue'
+-}
+setField :: FieldDefinition nullability a -> a -> Expr.SetClause
+setField fieldDef value =
+  Expr.setColumn
+    (fieldColumnName fieldDef)
+    (fieldValueToSqlValue fieldDef value)
+
+{- |
+  Operator alias for 'setField'
+-}
+(.:=) :: FieldDefinition nullability a -> a -> Expr.SetClause
+(.:=) = setField

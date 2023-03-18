@@ -29,8 +29,8 @@ prop_createWithOneColumn =
   Property.singletonNamedDBProperty "Create table creates a table with one column" $ \pool -> do
     MIO.liftIO $
       Orville.runOrville pool $ do
-        Orville.executeVoid $ Expr.dropTableExpr (Just Expr.ifExists) exprTableName
-        Orville.executeVoid $ Expr.createTableExpr exprTableName [column1Definition] Nothing []
+        Orville.executeVoid Orville.DDLQuery $ Expr.dropTableExpr (Just Expr.ifExists) exprTableName
+        Orville.executeVoid Orville.DDLQuery $ Expr.createTableExpr exprTableName [column1Definition] Nothing []
 
     tableDesc <- PgAssert.assertTableExists pool tableNameString
     PgAssert.assertColumnNamesEqual tableDesc [column1NameString]
@@ -40,8 +40,8 @@ prop_createWithMultipleColumns =
   Property.singletonNamedDBProperty "Create table creates a table with multiple columns" $ \pool -> do
     MIO.liftIO $
       Orville.runOrville pool $ do
-        Orville.executeVoid $ Expr.dropTableExpr (Just Expr.ifExists) exprTableName
-        Orville.executeVoid $ Expr.createTableExpr exprTableName [column1Definition, column2Definition] Nothing []
+        Orville.executeVoid Orville.DDLQuery $ Expr.dropTableExpr (Just Expr.ifExists) exprTableName
+        Orville.executeVoid Orville.DDLQuery $ Expr.createTableExpr exprTableName [column1Definition, column2Definition] Nothing []
 
     tableDesc <- PgAssert.assertTableExists pool tableNameString
     PgAssert.assertColumnNamesEqual tableDesc [column1NameString, column2NameString]
@@ -51,9 +51,9 @@ prop_addOneColumn =
   Property.singletonNamedDBProperty "Alter table adds one column" $ \pool -> do
     MIO.liftIO $
       Orville.runOrville pool $ do
-        Orville.executeVoid $ Expr.dropTableExpr (Just Expr.ifExists) exprTableName
-        Orville.executeVoid $ Expr.createTableExpr exprTableName [] Nothing []
-        Orville.executeVoid $ Expr.alterTableExpr exprTableName (Expr.addColumn column1Definition :| [])
+        Orville.executeVoid Orville.DDLQuery $ Expr.dropTableExpr (Just Expr.ifExists) exprTableName
+        Orville.executeVoid Orville.DDLQuery $ Expr.createTableExpr exprTableName [] Nothing []
+        Orville.executeVoid Orville.DDLQuery $ Expr.alterTableExpr exprTableName (Expr.addColumn column1Definition :| [])
 
     tableDesc <- PgAssert.assertTableExists pool tableNameString
     PgAssert.assertColumnNamesEqual tableDesc [column1NameString]
@@ -63,16 +63,16 @@ prop_addMultipleColumns =
   Property.singletonNamedDBProperty "Alter table adds multiple columns" $ \pool -> do
     MIO.liftIO $
       Orville.runOrville pool $ do
-        Orville.executeVoid $ Expr.dropTableExpr (Just Expr.ifExists) exprTableName
-        Orville.executeVoid $ Expr.createTableExpr exprTableName [] Nothing []
-        Orville.executeVoid $ Expr.alterTableExpr exprTableName (Expr.addColumn column1Definition :| [Expr.addColumn column2Definition])
+        Orville.executeVoid Orville.DDLQuery $ Expr.dropTableExpr (Just Expr.ifExists) exprTableName
+        Orville.executeVoid Orville.DDLQuery $ Expr.createTableExpr exprTableName [] Nothing []
+        Orville.executeVoid Orville.DDLQuery $ Expr.alterTableExpr exprTableName (Expr.addColumn column1Definition :| [Expr.addColumn column2Definition])
 
     tableDesc <- PgAssert.assertTableExists pool tableNameString
     PgAssert.assertColumnNamesEqual tableDesc [column1NameString, column2NameString]
 
-exprTableName :: Expr.QualifiedTableName
+exprTableName :: Expr.Qualified Expr.TableName
 exprTableName =
-  Expr.qualifiedTableName Nothing (Expr.tableName tableNameString)
+  Expr.qualified Nothing (Expr.tableName tableNameString)
 
 tableNameString :: String
 tableNameString =
@@ -84,6 +84,7 @@ column1Definition =
     (Expr.columnName column1NameString)
     Expr.text
     Nothing
+    Nothing
 
 column1NameString :: String
 column1NameString =
@@ -94,6 +95,7 @@ column2Definition =
   Expr.columnDefinition
     (Expr.columnName column2NameString)
     Expr.text
+    Nothing
     Nothing
 
 column2NameString :: String

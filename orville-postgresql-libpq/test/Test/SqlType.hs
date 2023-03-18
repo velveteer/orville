@@ -10,6 +10,7 @@ import qualified Data.Pool as Pool
 import qualified Data.String as String
 import qualified Data.Text as T
 import qualified Data.Time as Time
+import Hedgehog ((===))
 import qualified Hedgehog as HH
 
 import qualified Orville.PostgreSQL.Connection as Connection
@@ -334,6 +335,26 @@ dateTests pool =
           , expectedValue = Time.fromGregorian 2020 12 21
           }
     )
+  ,
+    ( String.fromString "Testing the decode of DATE with value 0001-12-21"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "DATE"
+          , rawSqlValue = Just $ B8.pack "'0001-12-21'"
+          , sqlType = SqlType.date
+          , expectedValue = Time.fromGregorian 1 12 21
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of DATE with value 10000-12-21"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "DATE"
+          , rawSqlValue = Just $ B8.pack "'10000-12-21'"
+          , sqlType = SqlType.date
+          , expectedValue = Time.fromGregorian 10000 12 21
+          }
+    )
   ]
 
 timestampTests :: Pool.Pool Connection.Connection -> [(HH.PropertyName, HH.Property)]
@@ -349,6 +370,16 @@ timestampTests pool =
           }
     )
   ,
+    ( String.fromString "Testing the decode of TIMESTAMP WITH TIME ZONE with value '2020-12-20 23:00:00-01'"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "TIMESTAMP WITH TIME ZONE"
+          , rawSqlValue = Just $ B8.pack "'2020-12-20 23:00:00-01'"
+          , sqlType = SqlType.timestamp
+          , expectedValue = Time.UTCTime (Time.fromGregorian 2020 12 21) 0
+          }
+    )
+  ,
     ( String.fromString "Testing the decode of TIMESTAMP WITH TIME ZONE with value '2020-12-21 00:00:32+00'"
     , runDecodingTest pool $
         DecodingTest
@@ -356,6 +387,36 @@ timestampTests pool =
           , rawSqlValue = Just $ B8.pack "'2020-12-21 00:00:32+00'"
           , sqlType = SqlType.timestamp
           , expectedValue = Time.UTCTime (Time.fromGregorian 2020 12 21) (Time.secondsToDiffTime 32)
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of TIMESTAMP WITH TIME ZONE with value '2020-12-21 01:00:00+01'"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "TIMESTAMP WITH TIME ZONE"
+          , rawSqlValue = Just $ B8.pack "'2020-12-21 01:00:00+01'"
+          , sqlType = SqlType.timestamp
+          , expectedValue = Time.UTCTime (Time.fromGregorian 2020 12 21) 0
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of TIMESTAMP WITH TIME ZONE with value '2020-12-21 00:30:00+0030'"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "TIMESTAMP WITH TIME ZONE"
+          , rawSqlValue = Just $ B8.pack "'2020-12-21 00:30:00+0030'"
+          , sqlType = SqlType.timestamp
+          , expectedValue = Time.UTCTime (Time.fromGregorian 2020 12 21) 0
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of TIMESTAMP WITH TIME ZONE with value '2020-12-21 00:30:00+00:30'"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "TIMESTAMP WITH TIME ZONE"
+          , rawSqlValue = Just $ B8.pack "'2020-12-21 00:30:00+00:30'"
+          , sqlType = SqlType.timestamp
+          , expectedValue = Time.UTCTime (Time.fromGregorian 2020 12 21) 0
           }
     )
   ,
@@ -369,7 +430,7 @@ timestampTests pool =
           }
     )
   ,
-    ( String.fromString "Testing the decode of TIMESTAMP WITHOUT TIME ZONE with value '2020-12-21 00:00:32-00'"
+    ( String.fromString "Testing the decode of TIMESTAMP WITHOUT TIME ZONE with value '2020-12-21 00:00:32'"
     , runDecodingTest pool $
         DecodingTest
           { sqlTypeDDL = "TIMESTAMP WITHOUT TIME ZONE"
@@ -379,13 +440,63 @@ timestampTests pool =
           }
     )
   ,
-    ( String.fromString "Testing the decode of TIMESTAMP WITHOUT TIME ZONE with value '2020-12-21 00:00:32+00'"
+    ( String.fromString "Testing the decode of TIMESTAMP WITHOUT TIME ZONE with value '2020-12-21 00:00:32.000'"
     , runDecodingTest pool $
         DecodingTest
           { sqlTypeDDL = "TIMESTAMP WITHOUT TIME ZONE"
           , rawSqlValue = Just $ B8.pack "'2020-12-21 00:00:32.000'"
           , sqlType = SqlType.timestampWithoutZone
           , expectedValue = Time.LocalTime (Time.fromGregorian 2020 12 21) (Time.timeToTimeOfDay $ Time.secondsToDiffTime 32)
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of TIMESTAMP WITHOUT TIME ZONE with value '2020-12-21 00:00:00.001'"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "TIMESTAMP WITHOUT TIME ZONE"
+          , rawSqlValue = Just $ B8.pack "'2020-12-21 00:00:00.001'"
+          , sqlType = SqlType.timestampWithoutZone
+          , expectedValue = Time.LocalTime (Time.fromGregorian 2020 12 21) (Time.timeToTimeOfDay $ Time.picosecondsToDiffTime (1 * 10 ^ (9 :: Int)))
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of TIMESTAMP WITHOUT TIME ZONE with value '2020-12-21 10:00:32'"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "TIMESTAMP WITHOUT TIME ZONE"
+          , rawSqlValue = Just $ B8.pack "'2020-12-21 10:00:32'"
+          , sqlType = SqlType.timestampWithoutZone
+          , expectedValue = Time.LocalTime (Time.fromGregorian 2020 12 21) (Time.timeToTimeOfDay $ Time.secondsToDiffTime (60 * 60 * 10 + 32))
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of TIMESTAMP WITHOUT TIME ZONE with value '2020-12-21 00:10:32'"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "TIMESTAMP WITHOUT TIME ZONE"
+          , rawSqlValue = Just $ B8.pack "'2020-12-21 00:10:32'"
+          , sqlType = SqlType.timestampWithoutZone
+          , expectedValue = Time.LocalTime (Time.fromGregorian 2020 12 21) (Time.timeToTimeOfDay $ Time.secondsToDiffTime (60 * 10 + 32))
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of TIMESTAMP WITHOUT TIME ZONE with value '10000-12-21 00:00:32'"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "TIMESTAMP WITHOUT TIME ZONE"
+          , rawSqlValue = Just $ B8.pack "'10000-12-21 00:00:32'"
+          , sqlType = SqlType.timestampWithoutZone
+          , expectedValue = Time.LocalTime (Time.fromGregorian 10000 12 21) (Time.timeToTimeOfDay $ Time.secondsToDiffTime 32)
+          }
+    )
+  ,
+    ( String.fromString "Testing the decode of TIMESTAMP WITHOUT TIME ZONE with value '0001-12-21 00:00:32'"
+    , runDecodingTest pool $
+        DecodingTest
+          { sqlTypeDDL = "TIMESTAMP WITHOUT TIME ZONE"
+          , rawSqlValue = Just $ B8.pack "'0001-12-21 00:00:32'"
+          , sqlType = SqlType.timestampWithoutZone
+          , expectedValue = Time.LocalTime (Time.fromGregorian 1 12 21) (Time.timeToTimeOfDay $ Time.secondsToDiffTime 32)
           }
     )
   ]
@@ -403,7 +514,7 @@ runDecodingTest pool test =
     Pool.withResource pool $ \connection -> do
       MIO.liftIO $ dropAndRecreateTable connection "decoding_test" (sqlTypeDDL test)
 
-      let tableName = Expr.qualifiedTableName Nothing (Expr.tableName "decoding_test")
+      let tableName = Expr.qualified Nothing (Expr.tableName "decoding_test")
 
       MIO.liftIO . RawSql.executeVoid connection $
         Expr.insertExpr
@@ -419,10 +530,21 @@ runDecodingTest pool test =
             Expr.selectStar
             (Just $ Expr.tableExpr tableName Nothing Nothing Nothing Nothing Nothing)
 
-      (maybeA : _) <- MIO.liftIO $ ExecutionResult.decodeRows result (sqlType test)
-      maybeA HH.=== Just (expectedValue test)
+      rows <- MIO.liftIO $ ExecutionResult.readRows result
+
+      let actual = map (decodeSingleValue (sqlType test)) rows
+
+      actual === [Right $ expectedValue test]
 
 dropAndRecreateTable :: Connection.Connection -> String -> String -> IO ()
 dropAndRecreateTable connection tableName columnTypeDDL = do
-  Connection.executeRawVoid connection (B8.pack $ "DROP TABLE IF EXISTS " <> tableName) []
-  Connection.executeRawVoid connection (B8.pack $ "CREATE TABLE " <> tableName <> "(foo " <> columnTypeDDL <> ")") []
+  RawSql.executeVoid connection (RawSql.fromString $ "DROP TABLE IF EXISTS " <> tableName)
+  RawSql.executeVoid connection (RawSql.fromString $ "CREATE TABLE " <> tableName <> "(foo " <> columnTypeDDL <> ")")
+
+decodeSingleValue :: SqlType.SqlType a -> [(key, SqlValue.SqlValue)] -> Either String a
+decodeSingleValue valueType row =
+  case row of
+    [] ->
+      Left "Unable to decode single value from empty row"
+    (_, sqlValue) : _ ->
+      SqlType.sqlTypeFromSql valueType sqlValue

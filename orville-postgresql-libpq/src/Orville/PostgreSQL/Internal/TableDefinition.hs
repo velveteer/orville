@@ -14,17 +14,18 @@ module Orville.PostgreSQL.Internal.TableDefinition
     setTableSchema,
     tableConstraints,
     addTableConstraints,
+    tableIndexes,
+    addTableIndexes,
     tablePrimaryKey,
     tableMarshaller,
+    mapTableMarshaller,
     mkInsertExpr,
     mkCreateTableExpr,
     mkTableColumnDefinitions,
     mkTablePrimaryKeyExpr,
     mkInsertColumnList,
     mkInsertSource,
-    mkUpdateExpr,
-    mkDeleteExpr,
-    ReturningOption (WithoutReturning, WithReturning),
+    mkTableReturningClause,
   )
 where
 
@@ -35,8 +36,10 @@ import qualified Data.Set as Set
 import Orville.PostgreSQL.Internal.ConstraintDefinition (ConstraintDefinition, ConstraintMigrationKey, constraintMigrationKey, constraintSqlExpr)
 import qualified Orville.PostgreSQL.Internal.Expr as Expr
 import Orville.PostgreSQL.Internal.FieldDefinition (fieldColumnDefinition, fieldColumnName, fieldValueToSqlValue)
-import Orville.PostgreSQL.Internal.PrimaryKey (PrimaryKey, mkPrimaryKeyExpr, primaryKeyEqualsExpr)
-import Orville.PostgreSQL.Internal.SqlMarshaller (FieldFold, ReadOnlyColumnOption (ExcludeReadOnlyColumns, IncludeReadOnlyColumns), SqlMarshaller, collectFromField, foldMarshallerFields, marshallerColumnNames)
+import Orville.PostgreSQL.Internal.IndexDefinition (IndexDefinition, IndexMigrationKey, indexMigrationKey)
+import Orville.PostgreSQL.Internal.PrimaryKey (PrimaryKey, mkPrimaryKeyExpr, primaryKeyFieldNames)
+import Orville.PostgreSQL.Internal.ReturningOption (ReturningOption (WithReturning, WithoutReturning))
+import Orville.PostgreSQL.Internal.SqlMarshaller (AnnotatedSqlMarshaller, MarshallerField (Natural, Synthetic), ReadOnlyColumnOption (ExcludeReadOnlyColumns, IncludeReadOnlyColumns), SqlMarshaller, annotateSqlMarshaller, annotateSqlMarshallerEmptyAnnotation, collectFromField, foldMarshallerFields, mapSqlMarshaller, marshallerDerivedColumns, unannotatedSqlMarshaller)
 import Orville.PostgreSQL.Internal.SqlValue (SqlValue)
 import Orville.PostgreSQL.Internal.TableIdentifier (TableIdentifier, setTableIdSchema, tableIdQualifiedName, unqualifiedNameToTableId)
 
@@ -56,9 +59,10 @@ import Orville.PostgreSQL.Internal.TableIdentifier (TableIdentifier, setTableIdS
 data TableDefinition key writeEntity readEntity = TableDefinition
   { _tableIdentifier :: TableIdentifier
   , _tablePrimaryKey :: TablePrimaryKey key
-  , _tableMarshaller :: SqlMarshaller writeEntity readEntity
+  , _tableMarshaller :: AnnotatedSqlMarshaller writeEntity readEntity
   , _tableColumnsToDrop :: Set.Set String
   , _tableConstraints :: Map.Map ConstraintMigrationKey ConstraintDefinition
+  , _tableIndexes :: Map.Map IndexMigrationKey IndexDefinition
   }
 
 data HasKey key
@@ -83,8 +87,13 @@ mkTableDefinition ::
   SqlMarshaller writeEntity readEntity ->
   TableDefinition (HasKey key) writeEntity readEntity
 mkTableDefinition name primaryKey marshaller =
-  (mkTableDefinitionWithoutKey name marshaller)
-    { _tablePrimaryKey = TableHasKey primaryKey
+  TableDefinition
+    { _tableIdentifier = unqualifiedNameToTableId name
+    , _tablePrimaryKey = TableHasKey primaryKey
+    , _tableMarshaller = annotateSqlMarshaller (toList $ primaryKeyFieldNames primaryKey) marshaller
+    , _tableColumnsToDrop = Set.empty
+    , _tableConstraints = Map.empty
+    , _tableIndexes = Map.empty
     }
 
 {- |
@@ -104,9 +113,10 @@ mkTableDefinitionWithoutKey name marshaller =
   TableDefinition
     { _tableIdentifier = unqualifiedNameToTableId name
     , _tablePrimaryKey = TableHasNoKey
-    , _tableMarshaller = marshaller
+    , _tableMarshaller = annotateSqlMarshallerEmptyAnnotation marshaller
     , _tableColumnsToDrop = Set.empty
     , _tableConstraints = Map.empty
+    , _tableIndexes = Map.empty
     }
 
 {- |
@@ -150,12 +160,12 @@ tableIdentifier =
   statements. If the table has a schema name set, the name will be qualified
   with it.
 -}
-tableName :: TableDefinition key writeEntity readEntity -> Expr.QualifiedTableName
+tableName :: TableDefinition key writeEntity readEntity -> Expr.Qualified Expr.TableName
 tableName =
   tableIdQualifiedName . _tableIdentifier
 
 {- |
-  Set's the table's schema to the name in the given string, which will be
+  Sets the table's schema to the name in the given string, which will be
   treated as a SQL identifier. If a table has a schema name set, it will be
   included as a qualified on the table name for all queries involving the
   table.
@@ -199,6 +209,34 @@ addTableConstraints constraintDefs tableDef =
         }
 
 {- |
+  Retrieves all the table indexes that have been added to the table via
+  'addTableIndexes'.
+-}
+tableIndexes ::
+  TableDefinition key writeEntity readEntity ->
+  Map.Map IndexMigrationKey IndexDefinition
+tableIndexes =
+  _tableIndexes
+
+{- |
+  Adds the given table indexes to the table definition.
+
+  Note: If multiple indexes are added with the same 'IndexMigrationKey', only
+  the last one that is added will be part of the 'TableDefinition'. Any
+  previously added index with the same key is replaced by the new one.
+-}
+addTableIndexes ::
+  [IndexDefinition] ->
+  TableDefinition key writeEntity readEntity ->
+  TableDefinition key writeEntity readEntity
+addTableIndexes indexDefs tableDef =
+  let addIndex index indexMap =
+        Map.insert (indexMigrationKey index) index indexMap
+   in tableDef
+        { _tableIndexes = foldr addIndex (_tableIndexes tableDef) indexDefs
+        }
+
+{- |
   Returns the primary key for the table, as defined at construction via 'mkTableDefinition'.
 -}
 tablePrimaryKey :: TableDefinition (HasKey key) writeEntity readEntity -> PrimaryKey key
@@ -209,8 +247,18 @@ tablePrimaryKey def =
 {- |
   Returns the marshaller for the table, as defined at construction via 'mkTableDefinition'.
 -}
-tableMarshaller :: TableDefinition key writeEntity readEntity -> SqlMarshaller writeEntity readEntity
+tableMarshaller :: TableDefinition key writeEntity readEntity -> AnnotatedSqlMarshaller writeEntity readEntity
 tableMarshaller = _tableMarshaller
+
+{- |
+  Applies the provided function to the underlying 'SqlMarshaller' of the 'TableDefinition'
+-}
+mapTableMarshaller ::
+  (SqlMarshaller readEntityA writeEntityA -> SqlMarshaller readEntityB writeEntityB) ->
+  TableDefinition key readEntityA writeEntityA ->
+  TableDefinition key readEntityB writeEntityB
+mapTableMarshaller f tableDef =
+  tableDef {_tableMarshaller = mapSqlMarshaller f $ _tableMarshaller tableDef}
 
 {- |
   Builds a 'Expr.CreateTableExpr' that will create a SQL table matching the
@@ -235,7 +283,7 @@ mkTableColumnDefinitions ::
   [Expr.ColumnDefinition]
 mkTableColumnDefinitions tableDef =
   foldMarshallerFields
-    (tableMarshaller tableDef)
+    (unannotatedSqlMarshaller $ tableMarshaller tableDef)
     []
     (collectFromField IncludeReadOnlyColumns fieldColumnDefinition)
 
@@ -254,26 +302,23 @@ mkTablePrimaryKeyExpr tableDef =
       Nothing
 
 {- |
-  Specifies whether or not a @RETURNING@ clause should be included when a
-  query expression is built. This type is found as a parameter on a number
-  of the query building functions related to 'TableDefinition'.
+  When 'WithReturning' is given, builds a 'Expr.ReturningExpr' that will
+  return all the columns in the given table definition.
 -}
-data ReturningOption
-  = WithoutReturning
-  | WithReturning
-
-mkReturningClause ::
-  ReturningOption ->
+mkTableReturningClause ::
+  ReturningOption returningClause ->
   TableDefinition key writeEntity readEntty ->
   Maybe Expr.ReturningExpr
-mkReturningClause returningOption tableDef =
+mkTableReturningClause returningOption tableDef =
   case returningOption of
     WithoutReturning ->
       Nothing
     WithReturning ->
       Just
         . Expr.returningExpr
-        . marshallerColumnNames IncludeReadOnlyColumns
+        . Expr.selectDerivedColumns
+        . marshallerDerivedColumns
+        . unannotatedSqlMarshaller
         . tableMarshaller
         $ tableDef
 
@@ -283,21 +328,24 @@ mkReturningClause returningOption tableDef =
   return the insert rows or not, depending on the 'ReturnOption' given.
 -}
 mkInsertExpr ::
-  ReturningOption ->
+  ReturningOption returningClause ->
   TableDefinition key writeEntity readEntity ->
   NonEmpty writeEntity ->
   Expr.InsertExpr
 mkInsertExpr returningOption tableDef entities =
-  let insertColumnList =
-        mkInsertColumnList . tableMarshaller $ tableDef
+  let marshaller =
+        unannotatedSqlMarshaller $ tableMarshaller tableDef
+
+      insertColumnList =
+        mkInsertColumnList marshaller
 
       insertSource =
-        mkInsertSource (tableMarshaller tableDef) entities
+        mkInsertSource marshaller entities
    in Expr.insertExpr
         (tableName tableDef)
         (Just insertColumnList)
         insertSource
-        (mkReturningClause returningOption tableDef)
+        (mkTableReturningClause returningOption tableDef)
 
 {- |
   Builds an 'Expr.InsertColumnList' that specifies the columns for an
@@ -310,8 +358,9 @@ mkInsertExpr returningOption tableDef entities =
 mkInsertColumnList ::
   SqlMarshaller writeEntity readEntity ->
   Expr.InsertColumnList
-mkInsertColumnList =
-  Expr.insertColumnList . marshallerColumnNames ExcludeReadOnlyColumns
+mkInsertColumnList marshaller =
+  Expr.insertColumnList $
+    foldMarshallerFields marshaller [] (collectFromField ExcludeReadOnlyColumns fieldColumnName)
 
 {- |
   Builds an 'Expr.InsertSource' that will insert the given entities with their
@@ -337,70 +386,16 @@ mkInsertSource marshaller entities =
   field from a Haskell entity, adding it a list of 'SqlValue's that is being
   built.
 -}
-collectSqlValue :: FieldFold entity (entity -> [SqlValue])
-collectSqlValue fieldDef maybeAccessor encodeRest entity =
-  case maybeAccessor of
-    Just accessor -> fieldValueToSqlValue fieldDef (accessor entity) : (encodeRest entity)
-    Nothing -> (encodeRest entity)
-
-{- |
-  Builds an 'Expr.UpdateExpr' that will update the entity at the given 'key'
-  with the values from the 'writeEntity' when executed.
-  SQL table when it is executed.
--}
-mkUpdateExpr ::
-  ReturningOption ->
-  TableDefinition (HasKey key) writeEntity readEntity ->
-  key ->
-  writeEntity ->
-  Expr.UpdateExpr
-mkUpdateExpr returningOption tableDef key writeEntity =
-  let setClauses =
-        foldMarshallerFields
-          (tableMarshaller tableDef)
-          []
-          (collectSetClauses writeEntity)
-
-      isEntityKey =
-        primaryKeyEqualsExpr
-          (tablePrimaryKey tableDef)
-          key
-   in Expr.updateExpr
-        (tableName tableDef)
-        (Expr.setClauseList setClauses)
-        (Just (Expr.whereClause isEntityKey))
-        (mkReturningClause returningOption tableDef)
-
-{- |
-  Builds an 'Expr.DeleteExpr' that will delete the entity with the given 'key'.
--}
-mkDeleteExpr ::
-  ReturningOption ->
-  TableDefinition (HasKey key) writeEntity readEntity ->
-  key ->
-  Expr.DeleteExpr
-mkDeleteExpr returningOption tableDef key =
-  let isEntityKey =
-        primaryKeyEqualsExpr
-          (tablePrimaryKey tableDef)
-          key
-   in Expr.deleteExpr
-        (tableName tableDef)
-        (Just (Expr.whereClause isEntityKey))
-        (mkReturningClause returningOption tableDef)
-
-{- |
-  An internal helper function that collects the 'Expr.SetClause's to
-  update all the fields contained in a 'SqlMarshaller'
--}
-collectSetClauses :: entity -> FieldFold entity [Expr.SetClause]
-collectSetClauses entity fieldDef maybeAccessor clauses =
-  case maybeAccessor of
-    Nothing ->
-      clauses
-    Just accessor ->
-      let newClause =
-            Expr.setColumn
-              (fieldColumnName fieldDef)
-              (fieldValueToSqlValue fieldDef (accessor entity))
-       in newClause : clauses
+collectSqlValue ::
+  MarshallerField entity ->
+  (entity -> [SqlValue]) ->
+  entity ->
+  [SqlValue]
+collectSqlValue entry encodeRest entity =
+  case entry of
+    Natural fieldDef (Just accessor) ->
+      fieldValueToSqlValue fieldDef (accessor entity) : (encodeRest entity)
+    Natural _ Nothing ->
+      encodeRest entity
+    Synthetic _ ->
+      encodeRest entity

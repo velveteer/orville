@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Orville.PostgreSQL.Internal.OrvilleState
   ( OrvilleState,
@@ -6,6 +7,14 @@ module Orville.PostgreSQL.Internal.OrvilleState
     resetOrvilleState,
     orvilleConnectionPool,
     orvilleConnectionState,
+    orvilleErrorDetailLevel,
+    orvilleTransactionCallback,
+    orvilleSqlCommenterAttributes,
+    addTransactionCallback,
+    TransactionEvent (BeginTransaction, NewSavepoint, ReleaseSavepoint, RollbackToSavepoint, CommitTransaction, RollbackTransaction),
+    openTransactionEvent,
+    rollbackTransactionEvent,
+    transactionSuccessEvent,
     HasOrvilleState (askOrvilleState, localOrvilleState),
     ConnectionState (NotConnected, Connected),
     ConnectedState (ConnectedState, connectedConnection, connectedTransaction),
@@ -14,23 +23,96 @@ module Orville.PostgreSQL.Internal.OrvilleState
     newTransaction,
     Savepoint,
     savepointNestingLevel,
+    initialSavepoint,
+    nextSavepoint,
+    orvilleSqlExecutionCallback,
+    addSqlExecutionCallback,
+    orvilleBeginTransactionExpr,
+    setBeginTransactionExpr,
+    setSqlCommenterAttributes,
+    addSqlCommenterAttributes,
   )
 where
 
-import Control.Monad.Trans.Reader (ReaderT, ask, local)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Reader (ReaderT, ask, local, mapReaderT)
+import qualified Data.Map.Strict as Map
 import Data.Pool (Pool)
 
 import Orville.PostgreSQL.Connection (Connection)
+import Orville.PostgreSQL.Internal.ErrorDetailLevel (ErrorDetailLevel)
+import qualified Orville.PostgreSQL.Internal.Expr as Expr
+import Orville.PostgreSQL.Internal.QueryType (QueryType)
+import qualified Orville.PostgreSQL.Internal.RawSql as RawSql
+import qualified Orville.PostgreSQL.Internal.SqlCommenter as SqlCommenter
 
 {- |
   'OrvilleState' is used to manange opening connections to the database,
-  transactions, etc. 'newOrvilleState should be used to create an appopriate
+  transactions, etc. 'newOrvilleState' should be used to create an appopriate
   initial state for your monad's context.
 -}
 data OrvilleState = OrvilleState
-  { orvilleConnectionPool :: Pool Connection
-  , orvilleConnectionState :: ConnectionState
+  { _orvilleConnectionPool :: Pool Connection
+  , _orvilleConnectionState :: ConnectionState
+  , _orvilleErrorDetailLevel :: ErrorDetailLevel
+  , _orvilleTransactionCallback :: TransactionEvent -> IO ()
+  , _orvilleSqlExecutionCallback :: forall a. QueryType -> RawSql.RawSql -> IO a -> IO a
+  , _orvilleBeginTransactionExpr :: Expr.BeginTransactionExpr
+  , _orvilleSqlCommenterAttributes :: Maybe SqlCommenter.SqlCommenterAttributes
   }
+
+orvilleConnectionPool :: OrvilleState -> Pool Connection
+orvilleConnectionPool =
+  _orvilleConnectionPool
+
+orvilleConnectionState :: OrvilleState -> ConnectionState
+orvilleConnectionState =
+  _orvilleConnectionState
+
+orvilleErrorDetailLevel :: OrvilleState -> ErrorDetailLevel
+orvilleErrorDetailLevel =
+  _orvilleErrorDetailLevel
+
+orvilleTransactionCallback :: OrvilleState -> TransactionEvent -> IO ()
+orvilleTransactionCallback =
+  _orvilleTransactionCallback
+
+orvilleBeginTransactionExpr :: OrvilleState -> Expr.BeginTransactionExpr
+orvilleBeginTransactionExpr =
+  _orvilleBeginTransactionExpr
+
+orvilleSqlCommenterAttributes :: OrvilleState -> Maybe SqlCommenter.SqlCommenterAttributes
+orvilleSqlCommenterAttributes =
+  _orvilleSqlCommenterAttributes
+
+{- |
+  Registers a callback to be invoked during transactions.
+
+  The callback given will be called after the SQL statement corresponding
+  to the given event has finished executing. Callbacks will be called
+  in the order the are added.
+
+  Note: There is no specialized error handling for these callbacks. This means
+  that if a callback raises an exception no further callbacks will be called
+  and the exception will propagate up until it caught elsewhere. In particular,
+  if an exception is raised by a callback upon opening the transaction it will
+  cause the transaction to be rolled-back the same as any other exception that
+  might happen during the transaction. In general, we recommend only using
+  callbacks that either raise no exceptions or can handle their own exceptions
+  cleanly.
+-}
+addTransactionCallback ::
+  (TransactionEvent -> IO ()) ->
+  OrvilleState ->
+  OrvilleState
+addTransactionCallback newCallback state =
+  let originalCallback =
+        _orvilleTransactionCallback state
+
+      wrappedCallback event = do
+        originalCallback event
+        newCallback event
+   in state {_orvilleTransactionCallback = wrappedCallback}
 
 {- |
   'HasOrvilleState' is the typeclass that Orville uses to access and manange
@@ -89,15 +171,24 @@ instance Monad m => HasOrvilleState (ReaderT OrvilleState m) where
   askOrvilleState = ask
   localOrvilleState = local
 
+instance {-# OVERLAPS #-} (Monad m, HasOrvilleState m) => HasOrvilleState (ReaderT r m) where
+  askOrvilleState = lift askOrvilleState
+  localOrvilleState f = mapReaderT (localOrvilleState f)
+
 {- |
   Creates a appropriate initial 'OrvilleState' that will use the connection
   pool given to initiate connections to the database.
 -}
-newOrvilleState :: Pool Connection -> OrvilleState
-newOrvilleState pool =
+newOrvilleState :: ErrorDetailLevel -> Pool Connection -> OrvilleState
+newOrvilleState errorDetailLevel pool =
   OrvilleState
-    { orvilleConnectionPool = pool
-    , orvilleConnectionState = NotConnected
+    { _orvilleConnectionPool = pool
+    , _orvilleConnectionState = NotConnected
+    , _orvilleErrorDetailLevel = errorDetailLevel
+    , _orvilleTransactionCallback = defaultTransactionCallback
+    , _orvilleSqlExecutionCallback = defaultSqlExectionCallback
+    , _orvilleBeginTransactionExpr = defaultBeginTransactionExpr
+    , _orvilleSqlCommenterAttributes = Nothing
     }
 
 {- |
@@ -108,7 +199,9 @@ newOrvilleState pool =
 -}
 resetOrvilleState :: OrvilleState -> OrvilleState
 resetOrvilleState =
-  newOrvilleState . orvilleConnectionPool
+  newOrvilleState
+    <$> _orvilleErrorDetailLevel
+    <*> _orvilleConnectionPool
 
 {- |
   INTERNAL: Transitions the 'OrvilleState' into "connected" status, storing
@@ -119,7 +212,7 @@ resetOrvilleState =
 connectState :: ConnectedState -> OrvilleState -> OrvilleState
 connectState connectedState state =
   state
-    { orvilleConnectionState = Connected connectedState
+    { _orvilleConnectionState = Connected connectedState
     }
 
 {- |
@@ -153,8 +246,12 @@ newTransaction maybeTransactionState =
     Just (SavepointTransaction savepoint) ->
       SavepointTransaction (nextSavepoint savepoint)
 
+{- |
+  A internal Orville identifier for a savepoint in a PostgreSQL transaction.
+-}
 newtype Savepoint
   = Savepoint Int
+  deriving (Eq, Show)
 
 initialSavepoint :: Savepoint
 initialSavepoint =
@@ -166,3 +263,143 @@ nextSavepoint (Savepoint n) =
 
 savepointNestingLevel :: Savepoint -> Int
 savepointNestingLevel (Savepoint n) = n
+
+{- |
+  Describes an event in the lifecycle of a database transaction. You can use
+  'addTransactionCallBack' to register a callback to respond to these events.
+  The callback will be called after the even in question has been succesfully
+  executed.
+-}
+data TransactionEvent
+  = -- | Indicates a new transaction has been started
+    BeginTransaction
+  | -- | Indicates that a new savepoint has been saved within a transaction
+    NewSavepoint Savepoint
+  | -- | Indicates that a previous savepoint has been released. It can no
+    -- longer be rolled back to.
+    ReleaseSavepoint Savepoint
+  | -- | Indicates that rollbac was performed to a prior savepoint.
+    --
+    -- Note: It is possible to rollback to a savepoint prior to the most recent
+    -- one without releasing or rolling back to intermediate savepoints. Doing
+    -- so destroys any savepoints created after given savepoint. Although
+    -- Orville currently always matches 'NewSavepoint' with either
+    -- 'ReleaseSavepoint' or 'RollbackToSavepoint', it is recommended that you
+    -- do not rely on this behavior.
+    RollbackToSavepoint Savepoint
+  | -- | Indicates that the transaction has been committed.
+    CommitTransaction
+  | -- | Indicates that the transaction has been rolled back.
+    RollbackTransaction
+  deriving (Eq, Show)
+
+defaultTransactionCallback :: TransactionEvent -> IO ()
+defaultTransactionCallback = const (pure ())
+
+openTransactionEvent :: TransactionState -> TransactionEvent
+openTransactionEvent txnState =
+  case txnState of
+    OutermostTransaction -> BeginTransaction
+    SavepointTransaction savepoint -> NewSavepoint savepoint
+
+rollbackTransactionEvent :: TransactionState -> TransactionEvent
+rollbackTransactionEvent txnState =
+  case txnState of
+    OutermostTransaction -> RollbackTransaction
+    SavepointTransaction savepoint -> RollbackToSavepoint savepoint
+
+transactionSuccessEvent :: TransactionState -> TransactionEvent
+transactionSuccessEvent txnState =
+  case txnState of
+    OutermostTransaction -> CommitTransaction
+    SavepointTransaction savepoint -> ReleaseSavepoint savepoint
+
+orvilleSqlExecutionCallback ::
+  OrvilleState ->
+  forall a.
+  QueryType ->
+  RawSql.RawSql ->
+  IO a ->
+  IO a
+orvilleSqlExecutionCallback =
+  _orvilleSqlExecutionCallback
+
+defaultSqlExectionCallback :: QueryType -> RawSql.RawSql -> IO a -> IO a
+defaultSqlExectionCallback _ _ io = io
+
+{- |
+  Adds a callback to be called when an Orville operation executes a SQL
+  statement. The callback is given the IO action that will perform the
+  query execution and must call that action for the query to be run.
+  In particular, you can use this to time query and log any that are slow.
+
+  Calls to any previously added callbacks will also be execute as part of
+  the IO action passed to the new callback. Thus the newly added callback
+  happens "around" the previously added callback.
+
+  There is no special exception handling done for these callbacks beyond what
+  they implement themelves. Any callbacks should allow for the possibility that
+  the IO action they are given may raise an exception.
+-}
+addSqlExecutionCallback ::
+  (forall a. QueryType -> RawSql.RawSql -> IO a -> IO a) ->
+  OrvilleState ->
+  OrvilleState
+addSqlExecutionCallback outerCallback state =
+  let layeredCallback, innerCallback :: QueryType -> RawSql.RawSql -> IO a -> IO a
+      layeredCallback queryType sql action =
+        outerCallback queryType sql (innerCallback queryType sql action)
+      innerCallback = _orvilleSqlExecutionCallback state
+   in state {_orvilleSqlExecutionCallback = layeredCallback}
+
+defaultBeginTransactionExpr :: Expr.BeginTransactionExpr
+defaultBeginTransactionExpr =
+  Expr.beginTransaction Nothing
+
+{- |
+  Sets the SQL expression that Orville will use to begin transactions. You can
+  control the transaction isolation level by building your own
+  'Expr.BeginTransactionExpr' with the desired isolation level.
+-}
+setBeginTransactionExpr ::
+  Expr.BeginTransactionExpr ->
+  OrvilleState ->
+  OrvilleState
+setBeginTransactionExpr expr state =
+  state
+    { _orvilleBeginTransactionExpr = expr
+    }
+
+{- |
+  Sets the SqlCommenterAttributes that Orville will then add to any following statement executions.
+
+  @since 0.10.0
+-}
+setSqlCommenterAttributes ::
+  SqlCommenter.SqlCommenterAttributes ->
+  OrvilleState ->
+  OrvilleState
+setSqlCommenterAttributes comments state =
+  state
+    { _orvilleSqlCommenterAttributes = Just comments
+    }
+
+{- |
+  Adds the SqlCommenterAttributes to the already existing that Orville will then add to any following statement executions.
+
+  @since 0.10.0
+-}
+addSqlCommenterAttributes ::
+  SqlCommenter.SqlCommenterAttributes ->
+  OrvilleState ->
+  OrvilleState
+addSqlCommenterAttributes comments state =
+  case orvilleSqlCommenterAttributes state of
+    Nothing ->
+      state
+        { _orvilleSqlCommenterAttributes = Just comments
+        }
+    Just existingAttrs ->
+      state
+        { _orvilleSqlCommenterAttributes = Just $ Map.union comments existingAttrs
+        }
