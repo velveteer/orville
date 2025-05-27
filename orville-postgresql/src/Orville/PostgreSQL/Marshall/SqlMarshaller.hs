@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -61,24 +62,39 @@ module Orville.PostgreSQL.Marshall.SqlMarshaller
   , marshallerGreaterThanOrEqualTo
   , marshallerIn
   , marshallerNotIn
+  , marshallerToJSON
   )
 where
 
 import Control.Monad (join)
+import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Key as AKey
+import qualified Data.Aeson.Types as Aeson (Parser, parseMaybe)
 import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.Lazy.Char8 as BSL (toStrict)
+import Data.Int (Int16, Int32, Int64)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import Data.Maybe (catMaybes)
+import Data.Scientific (Scientific)
+import qualified Data.Scientific as Sci
 import qualified Data.Set as Set
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TextEnc
+import qualified Data.UUID as UUID
+import qualified Database.PostgreSQL.LibPQ as LibPQ
 
 import Orville.PostgreSQL.ErrorDetailLevel (ErrorDetailLevel)
 import Orville.PostgreSQL.Execution.ExecutionResult (Column (Column), ExecutionResult, Row (Row))
 import qualified Orville.PostgreSQL.Execution.ExecutionResult as Result
 import qualified Orville.PostgreSQL.Expr as Expr
 import Orville.PostgreSQL.Marshall.FieldDefinition (FieldDefinition, FieldName, FieldNullability (NotNullField, NullableField), FieldQualifier, asymmetricNullableField, fieldColumnName, fieldName, fieldNameToByteString, fieldNameToColumnName, fieldNullability, fieldTableConstraints, fieldValueFromSqlValue, nullableField, prefixField, qualifiedFieldColumnName, qualifyField, setField)
+import qualified Orville.PostgreSQL.Internal.FieldName as OFieldName (fieldNameToString)
+import qualified Orville.PostgreSQL.Marshall.FieldDefinition as O
 import qualified Orville.PostgreSQL.Marshall.MarshallError as MarshallError
 import qualified Orville.PostgreSQL.Marshall.SqlComparable as SqlComparable
 import Orville.PostgreSQL.Marshall.SyntheticField (SyntheticField, nullableSyntheticField, prefixSyntheticField, syntheticFieldExpression, syntheticFieldName, syntheticFieldValueFromSqlValue)
+import qualified Orville.PostgreSQL.Marshall.SqlType as SqlType
 import qualified Orville.PostgreSQL.Raw.SqlValue as SqlValue
 import qualified Orville.PostgreSQL.Schema.ConstraintDefinition as ConstraintDefinition
 import qualified Orville.PostgreSQL.Schema.TableIdentifier as TableIdentifier
@@ -157,9 +173,10 @@ data SqlMarshaller a b where
   MarshallNest :: (a -> b) -> SqlMarshaller b c -> SqlMarshaller a c
   -- | Marshall a SQL column using the given 'FieldDefinition'.
   MarshallField :: FieldDefinition nullability a -> SqlMarshaller a a
-  -- | Marshall a SQL expression on selecting using the given 'SyntheticField'
-  -- to generate selects. SyntheticFields are implicitly read-only, as they
-  -- do not represent a column that can be inserted into.
+  {- | Marshall a SQL expression on selecting using the given 'SyntheticField'
+    to generate selects. SyntheticFields are implicitly read-only, as they
+    do not represent a column that can be inserted into.
+  -}
   MarshallSyntheticField :: SyntheticField a -> SqlMarshaller b a
   -- | Tag a maybe-mapped marshaller so we don't map it twice.
   MarshallMaybeTag :: SqlMarshaller (Maybe a) (Maybe b) -> SqlMarshaller (Maybe a) (Maybe b)
@@ -1113,3 +1130,138 @@ marshallerIn = SqlComparable.isIn
 -}
 marshallerNotIn :: SqlMarshaller writeEntity x -> NE.NonEmpty writeEntity -> Expr.BooleanExpr
 marshallerNotIn = SqlComparable.isNotIn
+
+-- | Parses an Aeson.Value (expected to be a JSON object from TO_JSONB/TO_JSON) into a Haskell type using a SqlMarshaller.
+marshallerToJSON :: SqlMarshaller writeEntity readEntity -> Aeson.Value -> Aeson.Parser readEntity
+marshallerToJSON marshaller =
+  Aeson.withObject "JSON SqlMarshaller" (`marshallJSONObject` marshaller)
+
+marshallJSONObject ::
+  Aeson.Object ->
+  SqlMarshaller writeEntity readEntity ->
+  Aeson.Parser readEntity
+marshallJSONObject obj = \case
+  MarshallPure x -> pure x
+  MarshallApply mf mx ->
+    marshallJSONObject obj mf <*> marshallJSONObject obj mx
+  MarshallNest _accessor subMarshaller ->
+    marshallJSONObject obj subMarshaller
+  MarshallField fieldDef ->
+    parseJSONField obj fieldDef
+  MarshallSyntheticField _syntheticField ->
+    fail "Synthetic fields are not currently supported by marshallerToJSON"
+  MarshallMaybeTag subMarshaller ->
+    marshallJSONObject obj subMarshaller
+  MarshallPartial subMarshaller ->
+    marshallJSONObject obj subMarshaller >>= \case
+      Left errStr -> fail $ "MarshallPartial failed: " ++ errStr
+      Right val -> pure val
+  MarshallReadOnly subMarshaller ->
+    marshallJSONObject obj subMarshaller
+  MarshallQualifyFields _ subMarshaller ->
+    marshallJSONObject obj subMarshaller
+
+parseJSONField ::
+  Aeson.Object ->
+  O.FieldDefinition nullability a ->
+  Aeson.Parser a
+parseJSONField obj fieldDef = do
+  let
+    keyText = T.pack . OFieldName.fieldNameToString $ O.fieldName fieldDef
+    jsonKey = AKey.fromText keyText
+    sqlType = O.fieldType fieldDef
+
+  aesonValue <- obj Aeson..: jsonKey
+
+  convertedSqlValue <- case aesonValueToSqlValue sqlType aesonValue of
+    Left err -> fail $ "Field '" ++ T.unpack keyText ++ "': JSON to SqlValue conversion failed: " ++ err
+    Right sqlVal -> pure sqlVal
+
+  case O.fieldValueFromSqlValue fieldDef convertedSqlValue of
+    Left err -> fail $ "Field '" ++ T.unpack keyText ++ "': SqlValue to Haskell type conversion failed: " ++ err
+    Right val -> pure val
+
+parseStringValue :: LibPQ.Oid -> T.Text -> Either String SqlValue.SqlValue
+parseStringValue oid t
+  | oid == dateOid = parseTimeViaAeson SqlValue.fromDay "DATE" t
+  | oid == timestampOid = parseTimeViaAeson SqlValue.fromUTCTime "TIMESTAMPTZ (UTCTime)" t
+  | oid == timestampWithoutZoneOid = parseTimeViaAeson SqlValue.fromLocalTime "TIMESTAMP (LocalTime)" t
+  | oid == uuidOid = parseUuid t
+  | isTextOid oid = Right $ SqlValue.fromText t
+  | otherwise = Left $ "JSON string not appropriate for SQL OID: " ++ show oid
+ where
+  parseTimeViaAeson :: Aeson.FromJSON b => (b -> SqlValue.SqlValue) -> String -> T.Text -> Either String SqlValue.SqlValue
+  parseTimeViaAeson toSqlValueConstructor typeName textValue =
+    case Aeson.parseMaybe Aeson.parseJSON (Aeson.String textValue) of
+      Just timeVal -> Right $ toSqlValueConstructor timeVal
+      Nothing -> Left $ "Invalid " ++ typeName ++ " format: " ++ T.unpack textValue
+
+  parseUuid :: T.Text -> Either String SqlValue.SqlValue
+  parseUuid textValue = case UUID.fromText textValue of
+    Just uuidVal -> Right $ SqlValue.fromText (UUID.toText uuidVal)
+    Nothing -> Left $ "Invalid UUID format: " ++ T.unpack textValue
+
+parseNumberValue :: LibPQ.Oid -> Scientific -> Either String SqlValue.SqlValue
+parseNumberValue oid n
+  | oid == integerOid =
+      case Sci.toBoundedInteger n :: Maybe Int32 of
+        Just i32 -> Right $ SqlValue.fromInt32 i32
+        Nothing -> Left $ "JSON number " ++ show n ++ " out of range for Int32 (OID: " ++ show oid ++ ")"
+  | oid == bigIntegerOid =
+      case Sci.toBoundedInteger n :: Maybe Int64 of
+        Just i64 -> Right $ SqlValue.fromInt64 i64
+        Nothing -> Left $ "JSON number " ++ show n ++ " out of range for Int64 (OID: " ++ show oid ++ ")"
+  | oid == smallIntegerOid =
+      case Sci.toBoundedInteger n :: Maybe Int16 of
+        Just i16 -> Right $ SqlValue.fromInt16 i16
+        Nothing -> Left $ "JSON number " ++ show n ++ " out of range for Int16 (OID: " ++ show oid ++ ")"
+  | oid == doubleOid = Right $ SqlValue.fromDouble (realToFrac n)
+  | otherwise =
+      if Sci.isInteger n
+        then Left $ "JSON integer " ++ show n ++ " not appropriate for SQL OID: " ++ show oid
+        else Left $ "JSON float " ++ show n ++ " not appropriate for SQL OID: " ++ show oid
+
+parseBoolValue :: LibPQ.Oid -> Bool -> Either String SqlValue.SqlValue
+parseBoolValue oid b
+  | oid == booleanOid = Right $ SqlValue.fromBool b
+  | otherwise = Left $ "JSON boolean not appropriate for non-boolean SQL OID: " ++ show oid
+
+aesonValueToSqlValue :: SqlType.SqlType a -> Aeson.Value -> Either String SqlValue.SqlValue
+aesonValueToSqlValue sqlType av =
+  let
+    oid = SqlType.sqlTypeOid sqlType
+    oidStr = show oid
+  in
+    if oid == jsonbOid
+      then case av of
+        Aeson.Null -> Right SqlValue.sqlNull
+        _ -> Right $ SqlValue.fromText (TextEnc.decodeUtf8 . BSL.toStrict $ Aeson.encode av)
+      else case av of
+        Aeson.Null -> Right SqlValue.sqlNull
+        Aeson.String t -> parseStringValue oid t
+        Aeson.Number n -> parseNumberValue oid n
+        Aeson.Bool b -> parseBoolValue oid b
+        _ -> Left $ "JSON Object/Array (when not targeting JSONB) is not supported for OID: " ++ oidStr
+
+-- Define OIDs for standard types for comparison
+integerOid, bigIntegerOid, smallIntegerOid, doubleOid, booleanOid :: LibPQ.Oid
+integerOid = SqlType.sqlTypeOid SqlType.integer
+bigIntegerOid = SqlType.sqlTypeOid SqlType.bigInteger
+smallIntegerOid = SqlType.sqlTypeOid SqlType.smallInteger
+doubleOid = SqlType.sqlTypeOid SqlType.double
+booleanOid = SqlType.sqlTypeOid SqlType.boolean
+
+unboundedTextOid, fixedTextOid, boundedTextOid :: LibPQ.Oid
+unboundedTextOid = SqlType.sqlTypeOid SqlType.unboundedText
+fixedTextOid = LibPQ.Oid 1042
+boundedTextOid = LibPQ.Oid 1043
+
+uuidOid, dateOid, timestampOid, timestampWithoutZoneOid, jsonbOid :: LibPQ.Oid
+uuidOid = SqlType.sqlTypeOid SqlType.uuid
+dateOid = SqlType.sqlTypeOid SqlType.date
+timestampOid = SqlType.sqlTypeOid SqlType.timestamp
+timestampWithoutZoneOid = SqlType.sqlTypeOid SqlType.timestampWithoutZone
+jsonbOid = SqlType.sqlTypeOid SqlType.jsonb
+
+isTextOid :: LibPQ.Oid -> Bool
+isTextOid oid = oid == unboundedTextOid || oid == fixedTextOid || oid == boundedTextOid
